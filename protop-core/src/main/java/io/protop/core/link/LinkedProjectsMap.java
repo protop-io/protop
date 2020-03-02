@@ -1,0 +1,55 @@
+package io.protop.core.link;
+
+import io.protop.core.config.ProjectId;
+import io.protop.core.error.ServiceException;
+import io.protop.core.storage.Storage;
+import io.reactivex.Single;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
+/**
+ * Represents all dependencies that are currently linked on the machine.
+ */
+@Getter
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
+public class LinkedProjectsMap {
+
+    private final Map<ProjectId, Path> projects;
+
+    public static Single<LinkedProjectsMap> load() {
+        Path linksDirectory = Storage.pathOf(Storage.GlobalDirectory.LINKS);
+        Map<ProjectId, Path> projects = new HashMap<>();
+
+        return Single.fromCallable(() -> {
+            Files.list(linksDirectory).forEach(p -> memoizeProjects(projects, p));
+            return new LinkedProjectsMap(projects);
+        });
+    }
+
+    private static void memoizeProjects(Map<ProjectId, Path> memo, Path path) {
+        if (!Files.isDirectory(path)) {
+            return;
+        }
+
+        File org = path.toFile();
+        String orgName = org.getName();
+
+        try {
+            Files.list(path).forEach(p -> {
+                if (Files.isSymbolicLink(p)) {
+                    ProjectId name = new ProjectId(orgName, p.toFile().getName());
+                    memo.put(name, p);
+                }
+            });
+        } catch (IOException e) {
+            throw new ServiceException("Failed to load linked projects.");
+        }
+    }
+}

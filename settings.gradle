@@ -1,0 +1,3 @@
+rootProject.name = 'protop'
+include ':protop-core'
+include ':protop-cli'

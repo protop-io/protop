@@ -1,0 +1,20 @@
+plugins {
+    id "application"
+}
+
+dependencies {
+    implementation project(":protop-core")
+    
+    implementation "info.picocli:picocli:4.0.2"
+    implementation "info.picocli:picocli-shell-jline3:4.0.3"
+    implementation "org.jline:jline:3.12.1"
+
+    // annotations
+    annotationProcessor "info.picocli:picocli-codegen:4.0.2"
+}
+
+compileJava {
+    options.compilerArgs += ["-Aproject=${project.group}/${project.name}"]
+}
+
+mainClassName = "io.protop.cli.ProtopCli"
