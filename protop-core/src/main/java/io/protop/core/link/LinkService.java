@@ -1,10 +1,10 @@
 package io.protop.core.link;
 
-import io.protop.core.config.Configuration;
-import io.protop.core.config.ProjectId;
+import io.protop.core.manifest.Manifest;
+import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
-import io.protop.core.publishing.PublishableProject;
+import io.protop.core.publish.PublishableProject;
 import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageUtils;
 
@@ -17,9 +17,9 @@ public class LinkService {
     Logger logger = Logger.getLogger(LinkService.class);
 
     public void link(PublishableProject project) {
-        Configuration configuration = project.getConfiguration();
-        String organization = configuration.getOrganization();
-        String projectName = configuration.getName();
+        Manifest manifest = project.getManifest();
+        String organization = manifest.getOrganization();
+        String projectName = manifest.getName();
 
         Path linksDirectory = Storage.pathOf(Storage.GlobalDirectory.LINKS);
 
@@ -44,11 +44,11 @@ public class LinkService {
         // TODO
     }
 
-    public void Link(ProjectId other) {
+    public void Link(ProjectCoordinate other) {
         // TODO
     }
 
-    public void Unlink(ProjectId other) {
+    public void Unlink(ProjectCoordinate other) {
         // TODO
     }
 }

@@ -2,21 +2,21 @@ package io.protop.cli;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
-import io.protop.calver.CalVer;
-import io.protop.calver.InvalidVersionString;
 import io.protop.core.ProjectCreator;
-import io.protop.core.config.ProjectVersionBuilder;
+import io.protop.core.manifest.Manifest;
+import io.protop.core.manifest.ProjectVersionBuilder;
 import io.protop.core.error.ServiceError;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
 import io.protop.core.ProjectCreatorImpl;
-import io.protop.core.config.Configuration;
 import io.protop.core.storage.StorageService;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 
+import io.protop.version.InvalidVersionString;
+import io.protop.version.Version;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.MaskingCallback;
@@ -28,7 +28,7 @@ import picocli.CommandLine.*;
 public class Init implements Runnable {
 
     private static final Logger logger = Logger.getLogger(Init.class);
-    private static final CalVer defaultVersion = ProjectVersionBuilder.newInstance()
+    private static final Version defaultVersion = ProjectVersionBuilder.newInstance()
             .major(1970)
             .minor(1)
             .micro(1)
@@ -56,23 +56,23 @@ public class Init implements Runnable {
                 .parser(new DefaultParser())
                 .build();
 
-        Configuration configuration = Configuration.builder()
+        Manifest manifest = Manifest.builder()
                 .organization(getOrganization(reader))
                 .name(getName(reader))
                 .version(getVersion(reader))
                 .include(getPathsToInclude(reader))
                 .build();
 
-        createProject(configuration, directory);
+        createProject(manifest, directory);
     }
 
-    private void createProject(Configuration configuration, Path directory) {
+    private void createProject(Manifest manifest, Path directory) {
         StorageService storageService = new StorageService();
         ProjectCreator projectCreator = new ProjectCreatorImpl(storageService);
 
         try {
             logger.info("Creating new package manifest.");
-            projectCreator.create(configuration, directory);
+            projectCreator.create(manifest, directory);
 
             logger.always(String.format("Initialized new project."));
         } catch (Exception e) {
@@ -119,7 +119,7 @@ public class Init implements Runnable {
         }
     }
 
-    private CalVer getVersion(LineReader reader) {
+    private Version getVersion(LineReader reader) {
         String prompt = String.format("Initial version (default %s): ", defaultVersion);
         String rightPrompt = "";
         String version = reader.readLine(
@@ -128,9 +128,9 @@ public class Init implements Runnable {
             return defaultVersion;
         } else {
             try {
-                return CalVer.valueOf(ProjectVersionBuilder.scheme, version);
+                return Version.valueOf(ProjectVersionBuilder.scheme, version);
             } catch (InvalidVersionString e) {
-                throw new ServiceException(ServiceError.CONFIGURATION_ERROR, e);
+                throw new ServiceException(ServiceError.MANIFEST_ERROR, e);
             }
         }
     }

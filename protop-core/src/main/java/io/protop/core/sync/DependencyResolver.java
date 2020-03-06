@@ -1,9 +1,8 @@
 package io.protop.core.sync;
 
-import io.protop.calver.CalVer;
-import io.protop.core.config.ProjectId;
+import io.protop.core.manifest.ProjectCoordinate;
+import io.protop.version.Version;
 import io.reactivex.Single;
-
 import java.nio.file.Path;
 import java.util.Map;
 
@@ -18,6 +17,6 @@ public interface DependencyResolver {
      * Resolve dependencies.
      * @return unresolved dependencies.
      */
-    Single<Map<ProjectId, CalVer>> resolve(
-            Path dependencyDir, Map<ProjectId, CalVer> unresolvedDependencies);
+    Single<Map<ProjectCoordinate, Version>> resolve(
+            Path dependencyDir, Map<ProjectCoordinate, Version> unresolvedDependencies);
 }

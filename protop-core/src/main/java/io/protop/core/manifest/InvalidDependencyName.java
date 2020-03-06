@@ -1,4 +1,4 @@
-package io.protop.core.config;
+package io.protop.core.manifest;
 
 import io.protop.core.error.ServiceException;
 

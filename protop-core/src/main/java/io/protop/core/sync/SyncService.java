@@ -1,49 +1,49 @@
 package io.protop.core.sync;
 
-import io.protop.calver.CalVer;
-import io.protop.core.config.Configuration;
-import io.protop.core.config.DependencyMap;
-import io.protop.core.config.ProjectId;
+import io.protop.core.manifest.Manifest;
+import io.protop.core.manifest.DependencyMap;
+import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.core.error.ServiceError;
 import io.protop.core.error.ServiceException;
+import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageService;
 import io.protop.core.sync.status.SyncStatus;
-
+import io.protop.core.sync.status.Syncing;
+import io.protop.version.Version;
+import io.reactivex.Observable;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
-
-import io.protop.core.sync.status.Syncing;
-import io.reactivex.Observable;
 import lombok.AllArgsConstructor;
 
 @AllArgsConstructor
 public class SyncService {
-
-    private static final String PROTOP_DEPENDENCIES_DIR_NAME = "proto_include";
 
     private final StorageService storageService;
 
     public Observable<SyncStatus> sync(DependencyResolutionContext context) {
         Path projectPath = context.projectPath;
 
-        Configuration configuration = Configuration.from(projectPath)
-                .orElseThrow(() -> new ServiceException(ServiceError.CONFIGURATION_ERROR,
-                        "Project configuration is missing."));
+        Manifest manifest = Manifest.from(projectPath)
+                .orElseThrow(() -> new ServiceException(ServiceError.MANIFEST_ERROR,
+                        "Project manifest is missing."));
 
-        return sync(configuration, context);
+        return sync(manifest, context);
     }
 
     /**
      * Sync dependencies.
-     * @param configuration project configuration.
+     * @param manifest project manifest.
      * @param context context details.
      * @return unresolved dependencies.
      */
-    private Observable<SyncStatus> sync(
-            Configuration configuration, DependencyResolutionContext context) {
+    private Observable<SyncStatus> sync(Manifest manifest, DependencyResolutionContext context) {
         return Observable.create(emitter -> {
-            Path dependenciesPath = context.projectPath.resolve(PROTOP_DEPENDENCIES_DIR_NAME);
+            Path protopPath = context.projectPath.resolve(Storage.ProjectDirectory.PROTOP.getName());
+            storageService.createDirectoryIfNotExists(protopPath)
+                    .blockingAwait();
+
+            Path dependenciesPath = protopPath.resolve(Storage.ProjectDirectory.DEPS.getName());
             storageService.createDirectoryIfNotExists(dependenciesPath)
                     .blockingAwait();
 
@@ -52,23 +52,23 @@ public class SyncService {
                 resolvers.add(new LinkedDependencyResolver());
             }
 
-            // Currently always use cached dependencies and published dependencies.
-            resolvers.add(new PublishedDependencyResolver());
+            // Currently always authorize cached dependencies and published dependencies.
+            resolvers.add(new ExternalDependencyResolver());
 
-            DependencyMap dependencyMap = Optional.ofNullable(configuration.getDependencies())
+            DependencyMap dependencyMap = Optional.ofNullable(manifest.getDependencies())
                     .orElseGet(DependencyMap::new);
 
-            AtomicReference<Map<ProjectId, CalVer>> unresolvedDependencies = new AtomicReference<>(
+            AtomicReference<Map<ProjectCoordinate, Version>> unresolvedDependencies = new AtomicReference<>(
                     dependencyMap.getValues());
 
             resolvers.forEach(resolver -> {
                 emitter.onNext(new Syncing(resolver.getShortDescription()));
-                Map<ProjectId, CalVer> next = resolver.resolve(dependenciesPath, unresolvedDependencies.get())
+                Map<ProjectCoordinate, Version> next = resolver.resolve(dependenciesPath, unresolvedDependencies.get())
                         .blockingGet();
                 unresolvedDependencies.set(next);
             });
 
-            Map<ProjectId, CalVer> ultimatelyUnresolved = unresolvedDependencies.get();
+            Map<ProjectCoordinate, Version> ultimatelyUnresolved = unresolvedDependencies.get();
             if (!ultimatelyUnresolved.isEmpty()) {
                 emitter.onError(new IncompleteSync(ultimatelyUnresolved));
             } else {

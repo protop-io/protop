@@ -1,16 +1,18 @@
 package io.protop.cli;
 
-import com.google.common.base.Strings;
-import io.protop.core.auth.BasicCredentialService;
-import io.protop.core.auth.CredentialService;
+import io.protop.core.Context;
+import io.protop.core.RuntimeConfiguration;
+import io.protop.core.auth.BasicAuthService;
+import io.protop.core.auth.AuthService;
+import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
-import io.protop.core.publishing.ProjectPublisher;
-import io.protop.core.publishing.ProjectPublisherImpl;
-import io.protop.core.publishing.PublishableProject;
-import io.protop.core.registry.RegistryService;
-import io.protop.core.registry.RegistryServiceImpl;
+import io.protop.core.publish.ProjectPublisher;
+import io.protop.core.publish.ProjectPublisherImpl;
+import io.protop.core.publish.PublishableProject;
 import io.protop.core.storage.StorageService;
+import io.protop.utils.UriUtils;
+import io.reactivex.Completable;
 
 import java.net.URI;
 import java.nio.file.Path;
@@ -44,19 +46,35 @@ public class Publish implements Runnable {
 
         Logs.enableIf(protop.isDebugMode());
 
-        RegistryService registryService = new RegistryServiceImpl();
-
+        RuntimeConfiguration cliRc = RuntimeConfiguration.builder()
+                .repositoryUri(Optional.ofNullable(registry)
+                        .map(UriUtils::fromString)
+                        .orElse(null))
+                .build();
+        Context context = Context.from(location, cliRc);
         StorageService storageService = new StorageService();
-        CredentialService credentialService = new BasicCredentialService(storageService);
-        ProjectPublisher projectPublisher = new ProjectPublisherImpl(credentialService);
+        AuthService authService = new BasicAuthService(storageService);
+        ProjectPublisher projectPublisher = new ProjectPublisherImpl(context, authService);
 
         PublishableProject project = PublishableProject.from(location);
 
-        if (!Strings.isNullOrEmpty(registry)) {
-            projectPublisher.publish(project, URI.create(registry));
-        } else {
-            URI publishRegistry = registryService.getDefaultRegistry();
-            projectPublisher.publish(project, publishRegistry);
-        }
+        handle(projectPublisher.publish(project));
+    }
+
+    private void handle(Completable completable) {
+        completable.subscribe(() -> {
+            // TODO better message
+            logger.always("Published!");
+        }, e -> {
+            if (e instanceof ServiceException) {
+                String message = String.format("Failed to publish: %s. Retry with -d for more details.", e.getMessage());
+                logger.always(message);
+            } else {
+                if (!protop.isDebugMode()) {
+                    logger.always("Something unexpected happened. Retry with -d for more details.");
+                }
+                logger.error(e.getMessage(), e);
+            }
+        }).dispose();
     }
 }

@@ -1,10 +1,10 @@
 package io.protop.core;
 
-import io.protop.core.config.Configuration;
+import io.protop.core.manifest.Manifest;
 
 import java.nio.file.Path;
 
 public interface ProjectCreator {
 
-    void create(Configuration configuration, Path location);
+    void create(Manifest manifest, Path location);
 }

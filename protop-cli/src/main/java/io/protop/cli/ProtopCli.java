@@ -20,7 +20,7 @@ import picocli.CommandLine.*;
                 HelpCommand.class,
                 Init.class,
                 Publish.class,
-                Auth.class,
+                Login.class,
                 Logout.class,
                 Link.class,
                 Sync.class

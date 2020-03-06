@@ -1,6 +1,6 @@
 package io.protop.core;
 
-import io.protop.core.config.Configuration;
+import io.protop.core.manifest.Manifest;
 import io.protop.core.error.ServiceError;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
@@ -19,14 +19,14 @@ public class ProjectCreatorImpl implements ProjectCreator {
     private final StorageService storageService;
 
     @Override
-    public void create(Configuration configuration, Path directory) {
+    public void create(Manifest manifest, Path directory) {
 
-        Path configurationFilePath = Paths.get(directory.toString(), Configuration.FILE_NAME);
+        Path configurationFilePath = Paths.get(directory.toString(), Manifest.PROTOP_JSON);
 
         if (Files.exists(configurationFilePath)) {
-            throw new ServiceException(ServiceError.CONFIGURATION_ERROR, "Project already initialized.");
+            throw new ServiceException(ServiceError.MANIFEST_ERROR, "Project already initialized.");
         }
 
-        storageService.storeJson(configuration, configurationFilePath);
+        storageService.storeJson(manifest, configurationFilePath);
     }
 }

@@ -6,6 +6,7 @@ import io.protop.core.auth.*;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
 import io.protop.core.storage.StorageService;
+import io.protop.utils.UriUtils;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.MaskingCallback;
@@ -13,18 +14,17 @@ import org.jline.reader.impl.DefaultParser;
 import picocli.CommandLine.*;
 
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Base64;
 
 
-@Command(name = "auth",
+@Command(name = "login",
+        aliases = {"authorize"},
         description = "",
         subcommands = {
-//                Auth.Forget.class
+//                Login.Forget.class
         })
-public class Auth implements Runnable {
+public class Login implements Runnable {
 
-    private static final Logger logger = Logger.getLogger(Auth.class);
+    private static final Logger logger = Logger.getLogger(Login.class);
 
     @ParentCommand
     private ProtopCli protop;
@@ -60,7 +60,7 @@ public class Auth implements Runnable {
 
         URI registryUri = Strings.isNullOrEmpty(registry)
                 ? Environment.UNIVERSAL_DEFAULT_REGISTRY
-                : URI.create(registry);
+                : UriUtils.fromString(registry);
 
         if (Strings.isNullOrEmpty(username)) {
             username = promptUsername(reader);
@@ -70,18 +70,18 @@ public class Auth implements Runnable {
             password = promptPassword(reader);
         }
 
-        String usernamePassword = String.join(":", username, password);
-        String base64 = Base64.getEncoder().encodeToString(usernamePassword.getBytes());
         BasicCredentials basicCredentials = BasicCredentials.builder()
                 .registry(registryUri)
-                .basic(base64)
+                .username(username)
+                .password(password)
                 .build();
 
         StorageService storageService = new StorageService();
-        CredentialService credentialService = new BasicCredentialService(storageService);
-        credentialService.use(basicCredentials)
-            .blockingAwait();
-        logger.always("Credentials stored.");
+        AuthService<BasicCredentials> authService = new BasicAuthService(storageService);
+
+        authService.authorize(basicCredentials).blockingAwait();
+        // TODO better message
+        logger.always("Success!");
     }
 
     private String promptUsername(LineReader reader) {
@@ -104,35 +104,4 @@ public class Auth implements Runnable {
             return new String(password);
         }
     }
-
-//    @Command(name = "forget",
-//            description = "")
-//    public static class Forget implements Runnable {
-//
-////        @ParentCommand
-////        private ProtopCli protop;
-//
-//        @ParentCommand
-//        private Auth auth;
-//
-//        @Override
-//        public void run() {
-//            if (Strings.isNullOrEmpty(auth.registry)) {
-//                LineReader reader = LineReaderBuilder.builder()
-//                        .parser(new DefaultParser())
-//                        .build();
-//
-//            }
-//        }
-//
-//        private URI promptRegistry(LineReader reader) {
-//            String rightPrompt = "";
-//            String registry = reader.readLine("registry (required): ", rightPrompt, (MaskingCallback) null,null);
-//            if (Strings.isNullOrEmpty(registry)) {
-//                return promptRegistry(reader);
-//            } else {
-//                return URI.create(registry);
-//            }
-//        }
-//    }
 }

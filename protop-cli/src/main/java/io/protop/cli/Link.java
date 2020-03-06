@@ -3,7 +3,7 @@ package io.protop.cli;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
 import io.protop.core.link.LinkService;
-import io.protop.core.publishing.PublishableProject;
+import io.protop.core.publish.PublishableProject;
 import java.nio.file.Path;
 import picocli.CommandLine.*;
 

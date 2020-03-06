@@ -1,8 +1,9 @@
 package io.protop.core.sync;
 
-import io.protop.calver.CalVer;
-import io.protop.core.config.ProjectId;
+import io.protop.core.manifest.ProjectCoordinate;
 import java.util.Map;
+
+import io.protop.version.Version;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -10,5 +11,5 @@ import lombok.Getter;
 @AllArgsConstructor
 public class IncompleteSync extends Exception {
 
-    private final Map<ProjectId, CalVer> unresolvedDependencies;
+    private final Map<ProjectCoordinate, Version> unresolvedDependencies;
 }

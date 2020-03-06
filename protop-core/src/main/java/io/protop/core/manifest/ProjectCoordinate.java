@@ -1,4 +1,4 @@
-package io.protop.core.config;
+package io.protop.core.manifest;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.google.common.base.Strings;
@@ -10,30 +10,30 @@ import java.util.Map;
 
 @Getter
 @EqualsAndHashCode
-public class ProjectId {
+public class ProjectCoordinate {
 
-    private static final String FULL_COLON_SEPARATOR = ":";
+    private static final String SLASH = "/";
 
-    private final String organization;
-    private final String project;
+    private final String organizationId;
+    private final String projectId;
 
     @JsonCreator
-    ProjectId(String value) {
+    ProjectCoordinate(String value) {
         this(splitNamesFrom(value));
     }
 
-    public ProjectId(String organization, String project) {
-        this.organization = organization;
-        this.project = project;
+    public ProjectCoordinate(String organizationId, String projectId) {
+        this.organizationId = organizationId;
+        this.projectId = projectId;
     }
 
-    ProjectId(Map.Entry<String, String> pair) {
-        this.organization = pair.getKey();
-        this.project = pair.getValue();
+    ProjectCoordinate(Map.Entry<String, String> pair) {
+        this.organizationId = pair.getKey();
+        this.projectId = pair.getValue();
     }
 
-    public static ProjectId from(String value) {
-        return new ProjectId(value);
+    public static ProjectCoordinate from(String value) {
+        return new ProjectCoordinate(value);
     }
 
     private static Map.Entry<String, String> splitNamesFrom(String value) {
@@ -42,8 +42,8 @@ public class ProjectId {
         }
 
         String[] values = new String[0];
-        if (value.contains(FULL_COLON_SEPARATOR)) {
-            values = value.split(FULL_COLON_SEPARATOR);
+        if (value.contains(SLASH)) {
+            values = value.split(SLASH);
         }
 
         if (values.length != 2) {
@@ -55,6 +55,6 @@ public class ProjectId {
 
     @Override
     public String toString() {
-        return String.join(FULL_COLON_SEPARATOR, organization, project);
+        return String.join(SLASH, organizationId, projectId);
     }
 }

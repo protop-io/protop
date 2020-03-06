@@ -17,7 +17,7 @@ Entry point: (default "."):
 Initialized new project.
 ```
 
-View the generated manifest:
+View the generated aggregatedManifest:
 ```bash
 awesome-labs/numbers> cat protop.json
 {

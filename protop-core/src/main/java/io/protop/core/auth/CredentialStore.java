@@ -1,16 +1,12 @@
 package io.protop.core.auth;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.google.common.base.Strings;
 import io.protop.core.logs.Logger;
-
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-
 import lombok.Builder;
 import lombok.Getter;
 
@@ -24,10 +20,10 @@ public class CredentialStore {
     private static final Logger logger = Logger.getLogger(CredentialStore.class);
 
     @JsonProperty("store")
-    private Map<URI, BasicCredentials> store;
+    private Map<URI, AuthToken> store;
 
     @JsonCreator
-    CredentialStore(@JsonProperty("store") Map<URI, BasicCredentials> store) {
+    CredentialStore(@JsonProperty("store") Map<URI, AuthToken> store) {
         this.store = store;
     }
 
@@ -35,7 +31,7 @@ public class CredentialStore {
         this(new HashMap<>());
     }
 
-    private Map<URI, BasicCredentials> getStore() {
+    private Map<URI, AuthToken> getStore() {
         if (Optional.ofNullable(store).isEmpty()) {
             store = new HashMap<>();
         }
@@ -44,17 +40,17 @@ public class CredentialStore {
 
     /**
      * Adds or replaces an entry.
-     * @param basicCredentials
+     * @param authToken
      */
-    public void add(BasicCredentials basicCredentials) {
-        getStore().put(basicCredentials.getRegistry(), basicCredentials);
+    public void add(AuthToken authToken) {
+        getStore().put(authToken.getRegistry(), authToken);
     }
 
     public void remove(URI registry) {
         getStore().remove(registry);
     }
 
-    public BasicCredentials get(URI registry) {
-        return getStore().get(registry);
+    public Optional<AuthToken> get(URI registry) {
+        return Optional.ofNullable(getStore().get(registry));
     }
 }

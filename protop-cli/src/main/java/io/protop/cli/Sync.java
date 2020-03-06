@@ -49,9 +49,8 @@ public class Sync implements Runnable {
         logger.always("Failed to resolve some dependencies.");
 
         if (error instanceof IncompleteSync) {
-            ((IncompleteSync) error).getUnresolvedDependencies().forEach((dependencyName, version) -> {
-//                        logger.always(String.format("  - (unresolved) %s %s", dependencyName, version.toString())));
-                    });
+            ((IncompleteSync) error).getUnresolvedDependencies().forEach((dependencyName, version) ->
+                        logger.always(String.format("  - (unresolved) %s %s", dependencyName, version.toString())));
         } else {
             logger.error("An unexpected error occurred.", error);
         }

@@ -1,10 +1,10 @@
-package io.protop.core.config;
+package io.protop.core.manifest;
 
-import io.protop.calver.CalVer;
-import io.protop.calver.InvalidVersionString;
-import io.protop.calver.Scheme;
 import io.protop.core.error.ServiceError;
 import io.protop.core.error.ServiceException;
+import io.protop.version.InvalidVersionString;
+import io.protop.version.Scheme;
+import io.protop.version.Version;
 
 import java.util.Arrays;
 import java.util.List;
@@ -47,7 +47,7 @@ public class ProjectVersionBuilder {
         return this;
     }
 
-    public CalVer build() {
+    public Version build() {
         List<String> segments = Arrays.asList(
                 String.valueOf(major),
                 String.valueOf(minor),
@@ -55,9 +55,9 @@ public class ProjectVersionBuilder {
                 modifier);
 
         try {
-            return CalVer.valueOf(scheme, String.join(".", segments));
+            return Version.valueOf(scheme, String.join(".", segments));
         } catch (InvalidVersionString e) {
-            throw new ServiceException(ServiceError.CONFIGURATION_ERROR, e);
+            throw new ServiceException(ServiceError.MANIFEST_ERROR, e);
         }
     }
 }

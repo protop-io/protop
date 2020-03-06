@@ -1,4 +1,4 @@
-package io.protop.core.config.converters;
+package io.protop.core.manifest.converters;
 
 import com.fasterxml.jackson.databind.util.StdConverter;
 import java.nio.file.Path;

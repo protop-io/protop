@@ -26,7 +26,7 @@ public class StorageService {
             String fileString = objectMapper.writeValueAsString(bean);
             Files.write(path, fileString.getBytes());
         } catch (IOException e) {
-            String message = "Could not use file.";
+            String message = "Could not authorize file.";
             logger.error(message, e);
             throw new ServiceException(ServiceError.STORAGE_ERROR, message);
         }
