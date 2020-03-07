@@ -7,9 +7,12 @@ import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.reactivex.Completable;
 import io.reactivex.Maybe;
+import io.reactivex.Single;
+
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.UUID;
 
 public class StorageService {
 
@@ -57,6 +60,19 @@ public class StorageService {
                 Files.createDirectory(path);
             }
             return null;
+        });
+    }
+
+    public Single<Path> createTemporaryDirectory() {
+        return Single.create(emitter -> {
+            try {
+                Path tempStoragePath = Storage.pathOf(Storage.GlobalDirectory.TEMP_PUBLICATION_CACHE);
+                Path tempDirectory = Files.createTempDirectory(tempStoragePath, "idkk");
+                tempDirectory.toFile().deleteOnExit();
+                emitter.onSuccess(tempDirectory);
+            } catch (Throwable t) {
+                emitter.onError(t);
+            }
         });
     }
 }

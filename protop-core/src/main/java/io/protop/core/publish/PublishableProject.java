@@ -60,7 +60,7 @@ public class PublishableProject {
 
     public CompressedArchiveDetails compressAndZip(Path directory) {
         Path destination = Storage.pathOf(Storage.GlobalDirectory.TEMP_PUBLICATION_CACHE)
-                .resolve(UUID.randomUUID().toString() + ".tgz");
+                .resolve(UUID.randomUUID().toString() + ".tar.gz");
         logger.info("Compressing {} files.", files.size());
         try {
             long unpackedSize = 0;

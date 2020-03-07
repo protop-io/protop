@@ -1,6 +1,7 @@
 package io.protop.core.cache;
 
 import io.protop.core.error.ServiceException;
+import io.protop.core.logs.Logger;
 import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.core.manifest.ProjectVersionBuilder;
 import io.protop.core.storage.Storage;
@@ -21,13 +22,15 @@ import lombok.Getter;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class CachedProjectsMap {
 
-    private final Map<ProjectCoordinate, Map<Version, Path>> projects;
+    private static final Logger logger = Logger.getLogger(CachedProjectsMap.class);
+
+    private final Map<ProjectCoordinate, Map<Version<?>, Path>> projects;
 
     public static Single<CachedProjectsMap> load() {
         Path cacheDirectory = Storage.pathOf(Storage.GlobalDirectory.CACHE);
 
         // This is mutable so we can update it as we cache new dependencies.
-        Map<ProjectCoordinate, Map<Version, Path>> projects = new HashMap<>();
+        Map<ProjectCoordinate, Map<Version<?>, Path>> projects = new HashMap<>();
 
         return Single.fromCallable(() -> {
             Files.list(cacheDirectory).forEach(p -> memoizeProjects(projects, p));
@@ -35,7 +38,7 @@ public class CachedProjectsMap {
         });
     }
 
-    private static void memoizeProjects(Map<ProjectCoordinate, Map<Version, Path>> memo, Path path) {
+    private static void memoizeProjects(Map<ProjectCoordinate, Map<Version<?>, Path>> memo, Path path) {
         if (!Files.isDirectory(path)) {
             return;
         }
@@ -48,15 +51,15 @@ public class CachedProjectsMap {
                 if (Files.isDirectory(projectDir)) {
                     ProjectCoordinate coordinate = new ProjectCoordinate(orgName, projectDir.toFile().getName());
 
-                    Map<Version, Path> versions = new HashMap<>();
+                    Map<Version<?>, Path> versions = new HashMap<>();
                     try {
                         Files.list(projectDir).forEach(versionPath -> {
+                            String fileName = versionPath.toFile().getName();
                             try {
-                                String versionName = versionPath.toFile().getName();
-                                Version version = Version.valueOf(ProjectVersionBuilder.scheme, versionName);
+                                Version<?> version = Version.valueOf(ProjectVersionBuilder.scheme, fileName);
                                 versions.put(version, versionPath);
                             } catch (InvalidVersionString e) {
-                                handleError(e);
+                                logger.debug("Not a valid version; skipping {}.", fileName);
                             }
                         });
                         memo.put(coordinate, versions);
@@ -71,6 +74,6 @@ public class CachedProjectsMap {
     }
 
     private static void handleError(Throwable e) {
-        throw new ServiceException("Failed to load linked projects.", e);
+        throw new ServiceException("Failed to load cached projects.", e);
     }
 }

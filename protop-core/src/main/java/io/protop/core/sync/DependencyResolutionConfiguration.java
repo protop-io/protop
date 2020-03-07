@@ -1,14 +1,11 @@
 package io.protop.core.sync;
 
-import java.nio.file.Path;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 
 @Builder
 @AllArgsConstructor
-public class DependencyResolutionContext {
-
-    final Path projectPath;
+public class DependencyResolutionConfiguration {
 
     final boolean includesLinkedDependencies;
 }

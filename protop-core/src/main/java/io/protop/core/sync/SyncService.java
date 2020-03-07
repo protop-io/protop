@@ -1,10 +1,10 @@
 package io.protop.core.sync;
 
-import io.protop.core.manifest.Manifest;
+import io.protop.core.Context;
+import io.protop.core.auth.AuthService;
+import io.protop.core.cache.CacheService;
 import io.protop.core.manifest.DependencyMap;
 import io.protop.core.manifest.ProjectCoordinate;
-import io.protop.core.error.ServiceError;
-import io.protop.core.error.ServiceException;
 import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageService;
 import io.protop.core.sync.status.SyncStatus;
@@ -14,32 +14,32 @@ import io.reactivex.Observable;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
-import lombok.AllArgsConstructor;
 
-@AllArgsConstructor
 public class SyncService {
 
+    private final AuthService<?> authService;
     private final StorageService storageService;
+    private final Context context;
+    private final CacheService cacheService;
 
-    public Observable<SyncStatus> sync(DependencyResolutionContext context) {
-        Path projectPath = context.projectPath;
-
-        Manifest manifest = Manifest.from(projectPath)
-                .orElseThrow(() -> new ServiceException(ServiceError.MANIFEST_ERROR,
-                        "Project manifest is missing."));
-
-        return sync(manifest, context);
+    public SyncService(AuthService<?> authService,
+                       StorageService storageService,
+                       Context context) {
+        this.authService = authService;
+        this.storageService = storageService;
+        this.context = context;
+        this.cacheService = new CacheService(storageService);
     }
 
     /**
      * Sync dependencies.
-     * @param manifest project manifest.
-     * @param context context details.
+     * @param dependencyResolutionConfiguration dependency resolution details.
      * @return unresolved dependencies.
      */
-    private Observable<SyncStatus> sync(Manifest manifest, DependencyResolutionContext context) {
+    public Observable<SyncStatus> sync(DependencyResolutionConfiguration dependencyResolutionConfiguration) {
         return Observable.create(emitter -> {
-            Path protopPath = context.projectPath.resolve(Storage.ProjectDirectory.PROTOP.getName());
+            Path protopPath = context.getProjectLocation()
+                    .resolve(Storage.ProjectDirectory.PROTOP.getName());
             storageService.createDirectoryIfNotExists(protopPath)
                     .blockingAwait();
 
@@ -48,14 +48,14 @@ public class SyncService {
                     .blockingAwait();
 
             List<DependencyResolver> resolvers = new ArrayList<>();
-            if (context.includesLinkedDependencies) {
+            if (dependencyResolutionConfiguration.includesLinkedDependencies) {
                 resolvers.add(new LinkedDependencyResolver());
             }
 
             // Currently always authorize cached dependencies and published dependencies.
-            resolvers.add(new ExternalDependencyResolver());
+            resolvers.add(new ExternalDependencyResolver(authService, cacheService, context));
 
-            DependencyMap dependencyMap = Optional.ofNullable(manifest.getDependencies())
+            DependencyMap dependencyMap = Optional.ofNullable(context.getManifest().getDependencies())
                     .orElseGet(DependencyMap::new);
 
             AtomicReference<Map<ProjectCoordinate, Version>> unresolvedDependencies = new AtomicReference<>(

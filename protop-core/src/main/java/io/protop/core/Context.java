@@ -2,6 +2,7 @@ package io.protop.core;
 
 import io.protop.core.error.ServiceError;
 import io.protop.core.error.ServiceException;
+import io.protop.core.logs.Logger;
 import io.protop.core.manifest.Manifest;
 import io.protop.core.storage.Storage;
 import javax.annotation.concurrent.Immutable;
@@ -24,9 +25,14 @@ import lombok.Getter;
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class Context {
 
+    private static final Logger logger = Logger.getLogger(Context.class);
+
     private static final RuntimeConfiguration defaultRc = RuntimeConfiguration.builder()
             .repositoryUri(Environment.UNIVERSAL_DEFAULT_REGISTRY)
             .build();
+
+    @NotNull
+    private final Path projectLocation;
 
     @NotNull
     private final Manifest manifest;
@@ -34,7 +40,7 @@ public class Context {
     @NotNull
     private final RuntimeConfiguration rc;
 
-    public static Context from(Path projectLocation, RuntimeConfiguration... rcs) {
+    public static Context from(@NotNull Path projectLocation, RuntimeConfiguration... rcs) {
         Manifest manifest = Manifest.from(projectLocation)
                 .orElseThrow(() -> new ServiceException(ServiceError.MANIFEST_ERROR, "Manifest not found."));
 
@@ -44,7 +50,7 @@ public class Context {
         allRcs.add(RuntimeConfiguration.from(Storage.getHomePath())
                 .orElseGet(RuntimeConfiguration::empty));
 
-        return new Context(manifest, resolveRcs(allRcs));
+        return new Context(projectLocation, manifest, resolveRcs(allRcs));
     }
 
     private static RuntimeConfiguration resolveRcs(List<RuntimeConfiguration> rcs) {

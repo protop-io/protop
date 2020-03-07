@@ -2,9 +2,11 @@ package io.protop.utils;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import com.google.common.base.Objects;
+import java.util.Objects;
+
 import org.apache.http.client.utils.URIBuilder;
 
+import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 
 public class UriUtils {
@@ -20,13 +22,21 @@ public class UriUtils {
         return removeTrailingSlash(uri.toString());
     }
 
-    public static URI fromString(String uriString) {
+    @Nullable
+    public static URI fromString(@Nullable String uriString) {
+        if (Objects.isNull(uriString)) {
+            return null;
+        }
         return URI.create(removeTrailingSlash(uriString));
     }
 
-    private static String removeTrailingSlash(String input) {
+    @NotNull
+    private static String removeTrailingSlash(@NotNull String input) {
+        if (Objects.isNull(input)) {
+            return "";
+        }
         if (input.length() > 1) {
-            if (Objects.equal(input.charAt(input.length() - 1), '/')) {
+            if (Objects.equals(input.charAt(input.length() - 1), '/')) {
                 return input.substring(0, input.length() - 1);
             }
         }

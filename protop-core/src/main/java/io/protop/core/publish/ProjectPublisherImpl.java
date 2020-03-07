@@ -11,6 +11,7 @@ import io.protop.core.manifest.Manifest;
 import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
+import io.protop.utils.RegistryUtils;
 import io.protop.utils.UriUtils;
 import io.reactivex.Completable;
 import java.io.IOException;
@@ -104,7 +105,9 @@ public class ProjectPublisherImpl implements ProjectPublisher {
     private PublishableManifest buildPublishableManifest(Manifest manifest,
                                                          PublishableProject.CompressedArchiveDetails archiveDetails,
                                                          URI coordinateUri) throws URISyntaxException {
-        String tarballName = createTarBallName(manifest);
+        String tarballName = RegistryUtils.createTarballName(
+                new ProjectCoordinate(manifest.getOrganization(), manifest.getName()),
+                manifest.getVersion());
         String tarballUri = new URIBuilder(coordinateUri)
                 .setPath(coordinateUri.getPath() + "/-/" + tarballName)
                 .build()
@@ -123,7 +126,6 @@ public class ProjectPublisherImpl implements ProjectPublisher {
                         .fileCount(archiveDetails.getFilecount())
                         .integrity(archiveDetails.getIntegrity())
                         .shasum(archiveDetails.getShasum())
-                        .signature(archiveDetails.getSignature())
                         .unpackedSize(archiveDetails.getUnpackedSize())
                         .tarball(tarballUri)
                         .build())
@@ -159,16 +161,10 @@ public class ProjectPublisherImpl implements ProjectPublisher {
                 .versions(ImmutableMap.of(
                         manifest.getVersion().toString(),
                         manifest))
-                .attachments(ImmutableMap.of(createTarBallName(manifest), tarAttachment));
+                .attachments(ImmutableMap.of(
+                        RegistryUtils.createTarballName(id, manifest.getVersion()),
+                        tarAttachment));
 
         return builder.build();
-    }
-
-    private String createTarBallName(Manifest manifest) {
-        return String.join("-",
-                manifest.getOrganization(),
-                manifest.getName(),
-                manifest.getVersion().toString())
-                + ".tgz";
     }
 }

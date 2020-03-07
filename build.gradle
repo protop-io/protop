@@ -29,7 +29,7 @@ subprojects {
         implementation "org.slf4j:slf4j-api:$slf4jVersion"
         implementation "org.slf4j:slf4j-jdk14:$slf4jVersion"
         implementation "io.reactivex.rxjava2:rxjava:2.2.17"
-        implementation "io.protop.version:version:2020.3.2"
+        implementation "io.protop.version:version:2020.3.7"
         
         compileOnly "org.projectlombok:lombok:$lombokVersion"
 

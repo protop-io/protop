@@ -1,23 +1,42 @@
 package io.protop.core.sync;
 
+import io.protop.core.Context;
+import io.protop.core.auth.AuthService;
+import io.protop.core.auth.AuthToken;
+import io.protop.core.cache.CacheService;
 import io.protop.core.cache.CachedProjectsMap;
 import io.protop.core.error.ServiceException;
+import io.protop.core.logs.Logger;
 import io.protop.core.manifest.ProjectCoordinate;
+import io.protop.utils.HttpUtils;
+import io.protop.utils.RegistryUtils;
+import io.protop.utils.UriUtils;
 import io.protop.version.Version;
+import io.reactivex.Maybe;
 import io.reactivex.Single;
-import java.io.IOException;
-import java.nio.file.Files;
+
+import java.net.URI;
 import java.nio.file.Path;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
+
 import lombok.AllArgsConstructor;
+import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
 
 /**
  * Resolves dependencies published to a registry.
  */
 @AllArgsConstructor
 public class ExternalDependencyResolver implements DependencyResolver {
+
+    private static final Logger logger = Logger.getLogger(ExternalDependencyResolver.class);
+
+    private final AuthService<?> authService;
+    private final CacheService cacheService;
+    private final Context context;
 
     @Override
     public String getShortDescription() {
@@ -27,66 +46,80 @@ public class ExternalDependencyResolver implements DependencyResolver {
     @Override
     public Single<Map<ProjectCoordinate, Version>> resolve(
             Path dependencyDir, Map<ProjectCoordinate, Version> unresolvedDependencies) {
-        return Single.fromCallable(() -> {
-            CachedProjectsMap cache = CachedProjectsMap.load()
-                    .blockingGet();
-
+        return Single.create(emitter -> {
+            CachedProjectsMap cache = CachedProjectsMap.load().blockingGet();
             Set<ProjectCoordinate> resolved = new HashSet<>();
 
+            Map<ProjectCoordinate, Map<Version<?>, Path>> projects = cache.getProjects();
+
             unresolvedDependencies.forEach((coordinate, version) -> {
-                Map<ProjectCoordinate, Map<Version, Path>> projects = cache.getProjects();
-                if (projects.containsKey(coordinate)) {
-                    Map<Version, Path> versions = projects.get(coordinate);
+                Map<Version<?>, Path> versions = projects.computeIfAbsent(
+                        coordinate, coord -> new HashMap<>());
+
+                AtomicReference<Path> path = new AtomicReference<>();
+                if (versions.containsKey(version)) {
+                    path.set(versions.get(version));
+                } else {
+                    logger.info("Not found; attempting to retrieve from registry.");
                     try {
-                        if (!versions.containsKey(version)) {
-                            retrieveAndCache(coordinate, version, versions);
-                        }
-                        resolve(dependencyDir, coordinate, version, versions.get(version));
+                        Path cached = retrieveAndCache(coordinate, version).blockingGet();
+                        path.set(cached);
+                    } catch (Throwable t) {
+                        // TODO something else?
+                    }
+                }
+
+                Path sourceDir = path.get();
+                if (Objects.nonNull(sourceDir)) {
+                    try {
+                        SyncUtils.createSymbolicLink(dependencyDir, coordinate, sourceDir);
                         resolved.add(coordinate);
-                    } catch (IOException e) {
+                    } catch (Exception e) {
+                        // TODO handle better
                         throw new ServiceException("Unexpectedly failed to resolve external dependencies.", e);
                     }
                 }
             });
 
             resolved.forEach(unresolvedDependencies::remove);
-
-            return unresolvedDependencies;
+            emitter.onSuccess(unresolvedDependencies);
         });
     }
 
-    private void retrieveAndCache(ProjectCoordinate coordinate, Version version, Map<Version, Path> versions) {
-        // TODO
+    // TODO i don't like the side-effect-ness of this. However, it is important that the map is updated since it is
+    //  a reference of the cache used for all resolved dependencies
+    private Maybe<Path> retrieveAndCache(ProjectCoordinate coordinate, Version version) {
+        return Maybe.create(emitter -> {
+            logger.info("Attempting to retrieve {} {} from the registry.", coordinate, version);
 
-        // TODO
-        versions.put(version, null);
-    }
+            Optional<AuthToken> authToken = Optional.ofNullable(
+                    authService.getStoredToken(context.getRc().getRepositoryUri())
+                            .blockingGet());
+            // Not all GETs may need to be authenticated, but in case it is a private org/package, this is necessary.
+            HttpClient client = authToken
+                    .map(HttpUtils::createHttpClientWithToken)
+                    .orElseGet(HttpUtils::createHttpClient);
+            // TODO handle uri composition more cleanly
+            URI uri = UriUtils.appendPathSegments(
+                    context.getRc().getRepositoryUri(),
+                    coordinate.getOrganizationId(),
+                    coordinate.getProjectId(),
+                    "-",
+                    RegistryUtils.createTarballName(coordinate, version));
+            HttpGet get = new HttpGet(uri);
+            HttpResponse response = client.execute(get);
 
-    private void resolve(Path dependencyDir, ProjectCoordinate coordinate, Version version, Path src) throws IOException {
-        Path orgPath = dependencyDir.resolve(coordinate.getOrganizationId());
-
-        if (!Files.isDirectory(orgPath)) {
-            Files.deleteIfExists(orgPath);
-            Files.createDirectory(orgPath);
-        }
-
-        Path projectPath = orgPath.resolve(coordinate.getProjectId());
-
-        if (!Files.isDirectory(projectPath)) {
-            Files.deleteIfExists(projectPath);
-            Files.createDirectory(projectPath);
-        }
-
-        Path versionPath = projectPath.resolve(version.toString());
-
-        if (Files.exists(versionPath)) {
-            if (Files.isSymbolicLink(versionPath)) {
-                return;
+            if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
+                logger.error("Failed to retrieve package.");
+                // TODO handle better, i.e. map to a specific exception based on the response/code from the registry.
+                emitter.onComplete();
             } else {
-                Files.delete(versionPath);
-            }
-        }
+                Path path = cacheService.cache(coordinate, version, response.getEntity().getContent())
+                        .blockingGet();
 
-        Files.createSymbolicLink(versionPath, src);
+                logger.info("Happy path achieved.");
+                emitter.onSuccess(path);
+            }
+        });
     }
 }

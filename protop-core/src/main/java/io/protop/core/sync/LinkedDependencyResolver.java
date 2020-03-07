@@ -7,7 +7,6 @@ import io.protop.core.logs.Logger;
 import io.protop.version.Version;
 import io.reactivex.Single;
 import java.io.IOException;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.Map;
@@ -34,10 +33,10 @@ public class LinkedDependencyResolver implements DependencyResolver {
             unresolvedDependencies.forEach((name, version) -> {
                 if (resolvable.getProjects().containsKey(name)) {
                     try {
-                        resolve(dependencyDir, name, resolvable.getProjects().get(name));
+                        SyncUtils.createSymbolicLink(dependencyDir, name, resolvable.getProjects().get(name));
                         resolved.add(name);
                     } catch (IOException e) {
-                        throw new ServiceException("Unexpectedly failed to resolve linked dependencies.", e);
+                        throw new ServiceException("Unexpectedly failed to createSymbolicLink linked dependencies.", e);
                     }
                 }
             });
@@ -46,25 +45,5 @@ public class LinkedDependencyResolver implements DependencyResolver {
 
             return unresolvedDependencies;
         });
-    }
-
-    private void resolve(Path dependencyDir, ProjectCoordinate name, Path src) throws IOException {
-        Path org = dependencyDir.resolve(name.getOrganizationId());
-
-        if (!Files.isDirectory(org)) {
-            Files.deleteIfExists(org);
-            Files.createDirectory(org);
-        }
-
-        Path project = org.resolve(name.getProjectId());
-        if (Files.exists(project)) {
-            if (Files.isSymbolicLink(project)) {
-                return;
-            } else {
-                Files.delete(project);
-            }
-        }
-
-        Files.createSymbolicLink(project, src);
     }
 }

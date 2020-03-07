@@ -33,7 +33,7 @@ public class LinkService {
             if (Files.exists(projectPath)) {
                 Files.delete(projectPath);
             }
-            Files.createSymbolicLink(projectPath, project.getProjectLocation());
+            Files.createLink(projectPath, project.getProjectLocation());
         } catch (IOException e) {
             logger.error("Failed to link project.", e);
             throw new ServiceException("Failed to link project.", e);
