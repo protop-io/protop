@@ -6,7 +6,6 @@ WARNING: This project is super un-finished (until this message disappears).
 
 More documentation about the CLI and project as a whole will follow. For now, here's a look at the CLI-to-be:
 
-
 Initialize a project:
 ```bash
 awesome-labs/numbers> protop init
@@ -40,3 +39,14 @@ Publish:
 ```bash
 awesome-labs/numbers> protop publish
 ```
+
+# Development
+
+Protop is written in Java using the `picocli` CLI framework and Gradle for building.
+
+To manually test local changes to the project, run the developer install script in the root directory:
+```bash
+./install.sh
+```
+
+This will prompt you to add `~/.protop/bin` to your PATH if it is not already there.
