@@ -13,7 +13,7 @@ import java.net.URI;
 
 @Command(name = "logout",
         aliases = {"forget"},
-        description = "")
+        description = "Remove/forget credentials for the registry.")
 public class Logout implements Runnable {
 
     private static final Logger logger = Logger.getLogger(Logout.class);

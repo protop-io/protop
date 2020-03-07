@@ -4,6 +4,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Objects;
 
+import com.google.common.base.Strings;
 import org.apache.http.client.utils.URIBuilder;
 
 import javax.annotation.Nullable;
@@ -24,16 +25,17 @@ public class UriUtils {
 
     @Nullable
     public static URI fromString(@Nullable String uriString) {
-        if (Objects.isNull(uriString)) {
+        String resolvedUriString = removeTrailingSlash(uriString);
+        if (Strings.isNullOrEmpty(resolvedUriString)) {
             return null;
         }
-        return URI.create(removeTrailingSlash(uriString));
+        return URI.create(resolvedUriString);
     }
 
-    @NotNull
-    private static String removeTrailingSlash(@NotNull String input) {
-        if (Objects.isNull(input)) {
-            return "";
+    @Nullable
+    private static String removeTrailingSlash(@Nullable String input) {
+        if (Strings.isNullOrEmpty(input)) {
+            return null;
         }
         if (input.length() > 1) {
             if (Objects.equals(input.charAt(input.length() - 1), '/')) {

@@ -36,7 +36,7 @@ public class LinkedDependencyResolver implements DependencyResolver {
                         SyncUtils.createSymbolicLink(dependencyDir, name, resolvable.getProjects().get(name));
                         resolved.add(name);
                     } catch (IOException e) {
-                        throw new ServiceException("Unexpectedly failed to createSymbolicLink linked dependencies.", e);
+                        throw new ServiceException("Unexpectedly failed to resolve linked dependencies.", e);
                     }
                 }
             });

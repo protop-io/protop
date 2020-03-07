@@ -3,6 +3,7 @@ package io.protop.core.sync;
 import io.protop.core.Context;
 import io.protop.core.auth.AuthService;
 import io.protop.core.cache.CacheService;
+import io.protop.core.logs.Logger;
 import io.protop.core.manifest.DependencyMap;
 import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.core.storage.Storage;
@@ -16,6 +17,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SyncService {
+
+    private static final Logger logger = Logger.getLogger(SyncService.class);
 
     private final AuthService<?> authService;
     private final StorageService storageService;
@@ -43,8 +46,9 @@ public class SyncService {
             storageService.createDirectoryIfNotExists(protopPath)
                     .blockingAwait();
 
-            Path dependenciesPath = protopPath.resolve(Storage.ProjectDirectory.DEPS.getName());
-            storageService.createDirectoryIfNotExists(dependenciesPath)
+            Path dependenciesDir = protopPath.resolve(Storage.ProjectDirectory.DEPS.getName());
+
+            storageService.createDirectoryIfNotExists(dependenciesDir)
                     .blockingAwait();
 
             List<DependencyResolver> resolvers = new ArrayList<>();
@@ -63,7 +67,7 @@ public class SyncService {
 
             resolvers.forEach(resolver -> {
                 emitter.onNext(new Syncing(resolver.getShortDescription()));
-                Map<ProjectCoordinate, Version> next = resolver.resolve(dependenciesPath, unresolvedDependencies.get())
+                Map<ProjectCoordinate, Version> next = resolver.resolve(dependenciesDir, unresolvedDependencies.get())
                         .blockingGet();
                 unresolvedDependencies.set(next);
             });

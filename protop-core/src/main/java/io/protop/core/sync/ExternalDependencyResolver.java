@@ -90,18 +90,18 @@ public class ExternalDependencyResolver implements DependencyResolver {
     //  a reference of the cache used for all resolved dependencies
     private Maybe<Path> retrieveAndCache(ProjectCoordinate coordinate, Version version) {
         return Maybe.create(emitter -> {
-            logger.info("Attempting to retrieve {} {} from the registry.", coordinate, version);
+            URI registryUri = context.getRc().getRepositoryUri();
+            logger.info("Attempting to retrieve {} {} from {}.", coordinate, version, registryUri);
 
             Optional<AuthToken> authToken = Optional.ofNullable(
-                    authService.getStoredToken(context.getRc().getRepositoryUri())
-                            .blockingGet());
+                    authService.getStoredToken(registryUri).blockingGet());
             // Not all GETs may need to be authenticated, but in case it is a private org/package, this is necessary.
             HttpClient client = authToken
                     .map(HttpUtils::createHttpClientWithToken)
                     .orElseGet(HttpUtils::createHttpClient);
             // TODO handle uri composition more cleanly
             URI uri = UriUtils.appendPathSegments(
-                    context.getRc().getRepositoryUri(),
+                    registryUri,
                     coordinate.getOrganizationId(),
                     coordinate.getProjectId(),
                     "-",
@@ -109,8 +109,11 @@ public class ExternalDependencyResolver implements DependencyResolver {
             HttpGet get = new HttpGet(uri);
             HttpResponse response = client.execute(get);
 
-            if (response.getStatusLine().getStatusCode() != HttpStatus.SC_OK) {
-                logger.error("Failed to retrieve package.");
+            int statusCode = response.getStatusLine().getStatusCode();
+            if (statusCode != HttpStatus.SC_OK) {
+                logger.error("Failed to retrieve package. URI: {}. Status code: {}.",
+                        uri,
+                        statusCode);
                 // TODO handle better, i.e. map to a specific exception based on the response/code from the registry.
                 emitter.onComplete();
             } else {

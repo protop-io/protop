@@ -8,7 +8,7 @@ import java.nio.file.Path;
 import picocli.CommandLine.*;
 
 @Command(name = "link",
-        description = "")
+        description = "Link current project for access from other local projects.")
 public class Link implements Runnable {
 
     private static final Logger logger = Logger.getLogger(Link.class);

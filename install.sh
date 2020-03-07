@@ -1,9 +1,9 @@
 #!/bin/bash
 
 echo ""
-echo "----------------"
-echo "protop v0.1.0"
-echo "----------------
+echo "--------------------"
+echo "protop dev installer"
+echo "--------------------
 "
 
 protop_say()
@@ -33,20 +33,21 @@ cd $tmp
 
 # unpack
 unzip -qq $dist
-protop_say "Deleting previous package"
+protop_say "Deleting previous dev installation"
 
-rm -rf $dir/bin
-rm -rf $dir/lib
-mv $tmp/*/* $dir/
-mv $dir/bin/protop-cli $dir/bin/protop
-mv $dir/bin/protop-cli.bat $dir/bin/protop.bat
+rm -rf $dir/dev
+mkdir $dir/dev
+
+mv $tmp/*/* $dir/dev/
+mv $dir/dev/bin/protop-cli $dir/dev/bin/protop-dev
+mv $dir/dev/bin/protop-cli.bat $dir/dev/bin/protop-dev.bat
 cd $dir && rm -rf $tmp
 
-if [[ ":$PATH:" == *":$HOME/.protop/bin:"* ]]; then
-    protop_say "\`~/.protop/bin\` already in PATH"
-    protop_say "Finished! Try \`protop\` or \`protop help\` to get started!"
+if [[ ":$PATH:" == *":$HOME/.protop/dev/bin:"* ]]; then
+    protop_say "\`~/.protop/dev/bin\` already in PATH"
+    protop_say "Finished! Try \`protop-dev\` or \`protop-dev help\` to get started!"
 else
-    protop_say "Your path is missing \`~/.protop/bin\`; you will need to add it:"
-    protop_say "  - Add \`export PATH=\"\$PATH:\$HOME/.protop/bin\"\` to your \`~/.bashrc\` or \`~/.zshrc\`."
-    protop_say "  - Then try \`protop\` or \`protop help\` to get started!"
+    protop_say "Your path is missing \`~/.protop/dev/bin\`; you will need to add it:"
+    protop_say "  - Add \`export PATH=\"\$PATH:\$HOME/.protop/dev/bin\"\` to your \`~/.bashrc\` or \`~/.zshrc\`."
+    protop_say "  - Then try \`protop-dev\` or \`protop-dev help\` to get started!"
 fi

@@ -24,7 +24,7 @@ import org.jline.reader.impl.DefaultParser;
 import picocli.CommandLine.*;
 
 @Command(name = "init",
-        description = "")
+        description = "Initialize a protop project (generates a protop.json).")
 public class Init implements Runnable {
 
     private static final Logger logger = Logger.getLogger(Init.class);

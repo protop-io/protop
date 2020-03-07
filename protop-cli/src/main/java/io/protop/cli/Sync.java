@@ -18,7 +18,7 @@ import io.protop.utils.UriUtils;
 import picocli.CommandLine.*;
 
 @Command(name = "sync",
-        description = "Sync project and dependencies.")
+        description = "Sync project dependencies.")
 public class Sync implements Runnable {
 
     private static final Logger logger = Logger.getLogger(Link.class);
@@ -68,7 +68,7 @@ public class Sync implements Runnable {
     }
 
     private void handleError(Throwable error) {
-        logger.always("Failed to createSymbolicLink some dependencies.");
+        logger.always("Failed to resolve some dependencies.");
 
         if (error instanceof IncompleteSync) {
             ((IncompleteSync) error).getUnresolvedDependencies().forEach((dependencyName, version) ->

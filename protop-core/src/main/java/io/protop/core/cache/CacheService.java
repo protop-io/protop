@@ -7,20 +7,15 @@ import io.protop.core.storage.StorageService;
 import io.protop.version.Version;
 import io.reactivex.Single;
 import lombok.AllArgsConstructor;
-import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
-import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream;
-import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.io.IOUtils;
 
-import java.io.BufferedInputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.zip.GZIPInputStream;
 
 @AllArgsConstructor
@@ -38,6 +33,7 @@ public class CacheService {
             logger.info("Caching {}.", coordinate);
             try {
                 Path versionPath = resolveVersionPath(coordinate, version);
+                unlock(versionPath);
 
                 // write the tarball to version directory
                 GZIPInputStream gis = new GZIPInputStream(tarball);
@@ -57,6 +53,8 @@ public class CacheService {
                     entry = tis.getNextTarEntry();
                 }
                 tis.close();
+
+                lock(versionPath);
                 emitter.onSuccess(versionPath);
             } catch (Throwable t) {
                 emitter.onError(t);
@@ -91,5 +89,29 @@ public class CacheService {
             Files.createDirectory(versionPath);
         }
         return versionPath;
+    }
+
+    private void unlock(Path dependencyDir) {
+        logger.info("Unlocking dependencies.");
+        walkAndApply(dependencyDir, file -> file.setWritable(true));
+    }
+
+    /**
+     * Makes the directory and everything in it un-writable, mainly to protect against accidental modifications.
+     */
+    private void lock(Path dependencyDir) {
+        walkAndApply(dependencyDir, File::setReadOnly);
+    }
+
+    private void walkAndApply(Path directory, Consumer<File> consumer) {
+        File file = directory.toFile();
+        consumer.accept(file);
+        try {
+            Files.walk(directory).forEach(child -> {
+                consumer.accept(child.toFile());
+            });
+        } catch (IOException e) {
+            logger.warn("Failed to walk file tree / to apply changes.", e);
+        }
     }
 }

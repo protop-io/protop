@@ -14,14 +14,13 @@ import io.protop.core.storage.StorageService;
 import io.protop.utils.UriUtils;
 import io.reactivex.Completable;
 
-import java.net.URI;
 import java.nio.file.Path;
 import java.util.Optional;
 
 import picocli.CommandLine.*;
 
 @Command(name = "publish",
-        description = "")
+        description = "Publish project to the registry.")
 public class Publish implements Runnable {
 
     private static final Logger logger = Logger.getLogger(Publish.class);

@@ -33,13 +33,14 @@ class ProtopCli implements Runnable {
     @Getter
     @Option(names = {"-d", "--debug"},
             required = false,
-            defaultValue = "false")
+            defaultValue = "false",
+            description = "Turn on debug logs.")
     private boolean debugMode;
 
     @Option(names = {"-v", "--version"},
             required = false,
             defaultValue = "false",
-            description = "The version.")
+            description = "Print the current version of protop.")
     private Boolean logVersion;
 
     public void run() {

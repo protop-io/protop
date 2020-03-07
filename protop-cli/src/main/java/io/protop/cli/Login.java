@@ -17,11 +17,8 @@ import java.net.URI;
 
 
 @Command(name = "login",
-        aliases = {"authorize"},
-        description = "",
-        subcommands = {
-//                Login.Forget.class
-        })
+        aliases = {"auth"},
+        description = "Login to the registry.")
 public class Login implements Runnable {
 
     private static final Logger logger = Logger.getLogger(Login.class);
