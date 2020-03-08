@@ -29,4 +29,11 @@ public class RegistryUtils {
                 "-",
                 RegistryUtils.createTarballName(coordinate, version));
     }
+
+    public static URI createManifestUri(URI registryUri, ProjectCoordinate coordinate) throws URISyntaxException {
+        return UriUtils.appendPathSegments(
+                registryUri,
+                coordinate.getOrganizationId(),
+                coordinate.getProjectId());
+    }
 }

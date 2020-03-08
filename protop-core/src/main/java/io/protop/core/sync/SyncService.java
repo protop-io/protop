@@ -54,7 +54,7 @@ public class SyncService {
                 resolvers.add(new LinkedDependencyResolver());
             }
 
-            // Currently always authorize cached dependencies and published dependencies.
+            // Currently always use cached/external dependencies.
             resolvers.add(new ExternalDependencyResolver(authService, cacheService, context));
 
             DependencyMap dependencyMap = Optional.ofNullable(context.getManifest().getDependencies())
@@ -88,8 +88,10 @@ public class SyncService {
         Path dependenciesDir = protopPath.resolve(Storage.ProjectDirectory.DEPS.getName());
         storageService.createDirectoryIfNotExists(dependenciesDir)
                 .blockingAwait();
-        //
+
+        // This is fairly inexpensive and ensures better likelihood of the correct final state of things.
         FileUtils.cleanDirectory(dependenciesDir.toFile());
+
         return dependenciesDir;
     }
 }

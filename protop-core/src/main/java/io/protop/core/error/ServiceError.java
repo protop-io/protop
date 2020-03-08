@@ -8,6 +8,7 @@ public enum ServiceError {
     // 002xx - registry errors
     VERSION_ALREADY_PUBLISHED,
     AUTH_FAILED,
+    PACKAGE_NOT_FOUND,
 
     // 003xx - file system errors
     STORAGE_ERROR,

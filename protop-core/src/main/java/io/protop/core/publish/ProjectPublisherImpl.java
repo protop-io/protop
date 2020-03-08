@@ -8,6 +8,7 @@ import io.protop.core.auth.AuthToken;
 import io.protop.core.error.ServiceError;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
+import io.protop.core.manifest.AggregatedManifest;
 import io.protop.core.manifest.Manifest;
 import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.utils.HttpUtils;
@@ -160,7 +161,7 @@ public class ProjectPublisherImpl implements ProjectPublisher {
                 .version(manifest.getVersion())
                 .distTags(ImmutableMap.of())
                 .versions(ImmutableMap.of(
-                        manifest.getVersion().toString(),
+                        manifest.getVersion(),
                         manifest))
                 .attachments(ImmutableMap.of(
                         RegistryUtils.createTarballName(id, manifest.getVersion()),

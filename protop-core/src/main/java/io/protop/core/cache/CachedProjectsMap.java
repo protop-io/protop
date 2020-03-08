@@ -25,13 +25,13 @@ public class CachedProjectsMap {
 
     private static final Logger logger = Logger.getLogger(CachedProjectsMap.class);
 
-    private final Map<ProjectCoordinate, Map<Version<?>, Path>> projects;
+    private final Map<ProjectCoordinate, Map<Version, Path>> projects;
 
     public static Single<CachedProjectsMap> load() {
         Path cacheDirectory = Storage.pathOf(Storage.GlobalDirectory.CACHE);
 
         // This is mutable so we can update it as we cache new dependencies.
-        Map<ProjectCoordinate, Map<Version<?>, Path>> projects = new HashMap<>();
+        Map<ProjectCoordinate, Map<Version, Path>> projects = new HashMap<>();
 
         return Single.fromCallable(() -> {
             Files.list(cacheDirectory).forEach(p -> memoizeProjects(projects, p));
@@ -39,7 +39,7 @@ public class CachedProjectsMap {
         });
     }
 
-    private static void memoizeProjects(Map<ProjectCoordinate, Map<Version<?>, Path>> memo, Path path) {
+    private static void memoizeProjects(Map<ProjectCoordinate, Map<Version, Path>> memo, Path path) {
         if (!Files.isDirectory(path)) {
             return;
         }
@@ -52,12 +52,12 @@ public class CachedProjectsMap {
                 if (Files.isDirectory(projectDir)) {
                     ProjectCoordinate coordinate = new ProjectCoordinate(orgName, projectDir.toFile().getName());
 
-                    Map<Version<?>, Path> versions = new HashMap<>();
+                    Map<Version, Path> versions = new HashMap<>();
                     try {
                         Files.list(projectDir).forEach(versionPath -> {
                             String fileName = versionPath.toFile().getName();
                             try {
-                                Version<?> version = Version.valueOf(ProjectVersionBuilder.scheme, fileName);
+                                Version version = Version.valueOf(ProjectVersionBuilder.scheme, fileName);
                                 versions.put(version, versionPath);
                             } catch (InvalidVersionString e) {
                                 logger.debug("Not a valid version; skipping {}.", fileName);

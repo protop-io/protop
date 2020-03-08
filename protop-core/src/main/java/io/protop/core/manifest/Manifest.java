@@ -5,16 +5,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.collect.ImmutableList;
+import io.protop.core.Environment;
 import io.protop.core.error.ServiceError;
 import io.protop.core.error.ServiceException;
+import io.protop.core.logs.Logger;
 import io.protop.core.manifest.converters.PathListToStringList;
 import io.protop.core.manifest.converters.StringToVersion;
 import io.protop.core.manifest.converters.VersionToString;
 import io.protop.version.Version;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import javax.validation.constraints.NotNull;
 import java.io.File;
@@ -23,6 +23,7 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Getter
@@ -31,7 +32,7 @@ import java.util.Optional;
 @JsonPropertyOrder({"name", "org", "version", "description", "keywords", "license", "homepage"})
 public class Manifest {
 
-    private static final Logger logger = LoggerFactory.getLogger(Manifest.class);
+    private static final Logger logger = Logger.getLogger(Manifest.class);
     public static final String PROTOP_JSON = "protop.json";
 
     @JsonProperty("name")
@@ -72,7 +73,7 @@ public class Manifest {
             @JsonProperty("name") @NotNull String name,
             @JsonProperty("version") @JsonDeserialize(converter = StringToVersion.class) @NotNull Version version,
             @JsonProperty("organization") @NotNull String organization,
-            @JsonProperty("include") @NotNull List<Path> include,
+            @JsonProperty("include") List<Path> include,
             @JsonProperty("dependencies") DependencyMap dependencies,
             @JsonProperty("description") String description,
             @JsonProperty("readme") String readme,
@@ -82,13 +83,21 @@ public class Manifest {
         this.name = name;
         this.version = version;
         this.organization = organization;
-        this.include = ImmutableList.copyOf(include);
+        this.include = Objects.isNull(include) ? ImmutableList.of() : ImmutableList.copyOf(include);
         this.dependencies = dependencies;
         this.description = description;
         this.readme = readme;
         this.keywords = keywords;
         this.homepage = homepage;
         this.license = license;
+
+        try {
+            logger.info("JSON created with dependency map: {}.", Environment.getInstance().getObjectMapper()
+                    .writeValueAsString(dependencies));
+        } catch (Exception e) {
+            // ...
+        }
+
     }
 
     public static Optional<Manifest> from(Path directory) {
@@ -99,7 +108,7 @@ public class Manifest {
         }
 
         File file = configurationPath.toFile();
-        ObjectMapper objectMapper = new ObjectMapper();
+        ObjectMapper objectMapper = Environment.getInstance().getObjectMapper();
 
         try {
             Manifest manifest = objectMapper
