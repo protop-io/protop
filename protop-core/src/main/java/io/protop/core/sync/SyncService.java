@@ -12,8 +12,14 @@ import io.protop.core.sync.status.SyncStatus;
 import io.protop.core.sync.status.Syncing;
 import io.protop.version.Version;
 import io.reactivex.Observable;
+import org.apache.commons.io.FileUtils;
+
+import java.io.IOException;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class SyncService {
@@ -41,15 +47,7 @@ public class SyncService {
      */
     public Observable<SyncStatus> sync(DependencyResolutionConfiguration dependencyResolutionConfiguration) {
         return Observable.create(emitter -> {
-            Path protopPath = context.getProjectLocation()
-                    .resolve(Storage.ProjectDirectory.PROTOP.getName());
-            storageService.createDirectoryIfNotExists(protopPath)
-                    .blockingAwait();
-
-            Path dependenciesDir = protopPath.resolve(Storage.ProjectDirectory.DEPS.getName());
-
-            storageService.createDirectoryIfNotExists(dependenciesDir)
-                    .blockingAwait();
+            Path dependenciesDir = resolveEmptyDepsDir();
 
             List<DependencyResolver> resolvers = new ArrayList<>();
             if (dependencyResolutionConfiguration.includesLinkedDependencies) {
@@ -61,13 +59,14 @@ public class SyncService {
 
             DependencyMap dependencyMap = Optional.ofNullable(context.getManifest().getDependencies())
                     .orElseGet(DependencyMap::new);
-
             AtomicReference<Map<ProjectCoordinate, Version>> unresolvedDependencies = new AtomicReference<>(
                     dependencyMap.getValues());
 
             resolvers.forEach(resolver -> {
                 emitter.onNext(new Syncing(resolver.getShortDescription()));
-                Map<ProjectCoordinate, Version> next = resolver.resolve(dependenciesDir, unresolvedDependencies.get())
+                Map<ProjectCoordinate, Version> next = resolver.resolve(
+                        dependenciesDir,
+                        unresolvedDependencies.get())
                         .blockingGet();
                 unresolvedDependencies.set(next);
             });
@@ -79,5 +78,18 @@ public class SyncService {
                 emitter.onComplete();
             }
         });
+    }
+
+    private Path resolveEmptyDepsDir() throws IOException {
+        Path protopPath = context.getProjectLocation()
+                .resolve(Storage.ProjectDirectory.PROTOP.getName());
+        storageService.createDirectoryIfNotExists(protopPath)
+                .blockingAwait();
+        Path dependenciesDir = protopPath.resolve(Storage.ProjectDirectory.DEPS.getName());
+        storageService.createDirectoryIfNotExists(dependenciesDir)
+                .blockingAwait();
+        //
+        FileUtils.cleanDirectory(dependenciesDir.toFile());
+        return dependenciesDir;
     }
 }

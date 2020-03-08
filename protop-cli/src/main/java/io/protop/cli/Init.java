@@ -3,25 +3,27 @@ package io.protop.cli;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import io.protop.core.ProjectCreator;
-import io.protop.core.manifest.Manifest;
-import io.protop.core.manifest.ProjectVersionBuilder;
+import io.protop.core.ProjectCreatorImpl;
 import io.protop.core.error.ServiceError;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
-import io.protop.core.ProjectCreatorImpl;
+import io.protop.core.manifest.Manifest;
+import io.protop.core.manifest.ProjectVersionBuilder;
 import io.protop.core.storage.StorageService;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.List;
-
 import io.protop.version.InvalidVersionString;
 import io.protop.version.Version;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.MaskingCallback;
 import org.jline.reader.impl.DefaultParser;
-import picocli.CommandLine.*;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Parameters;
+import picocli.CommandLine.ParentCommand;
+
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
 
 @Command(name = "init",
         description = "Initialize a protop project (generates a protop.json).")

@@ -1,11 +1,11 @@
 package io.protop.core.sync;
 
 import io.protop.core.manifest.ProjectCoordinate;
-import java.util.Map;
-
 import io.protop.version.Version;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
+
+import java.util.Map;
 
 @Getter
 @AllArgsConstructor

@@ -2,8 +2,8 @@ package io.protop.cli;
 
 import io.protop.core.Context;
 import io.protop.core.RuntimeConfiguration;
-import io.protop.core.auth.BasicAuthService;
 import io.protop.core.auth.AuthService;
+import io.protop.core.auth.BasicAuthService;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
@@ -13,11 +13,13 @@ import io.protop.core.publish.PublishableProject;
 import io.protop.core.storage.StorageService;
 import io.protop.utils.UriUtils;
 import io.reactivex.Completable;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.Parameters;
+import picocli.CommandLine.ParentCommand;
 
 import java.nio.file.Path;
 import java.util.Optional;
-
-import picocli.CommandLine.*;
 
 @Command(name = "publish",
         description = "Publish project to the registry.")

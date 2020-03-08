@@ -1,9 +1,9 @@
 package io.protop.core.link;
 
-import io.protop.core.manifest.Manifest;
-import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
+import io.protop.core.manifest.Manifest;
+import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.core.publish.PublishableProject;
 import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageUtils;

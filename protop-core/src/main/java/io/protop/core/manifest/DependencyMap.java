@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonValue;
 import com.google.common.collect.ImmutableMap;
 import io.protop.core.manifest.converters.DependencyMapFromRaw;
 import io.protop.version.Version;
+
 import java.util.HashMap;
 import java.util.Map;
 

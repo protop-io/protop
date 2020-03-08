@@ -5,23 +5,25 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.collect.ImmutableList;
+import io.protop.core.error.ServiceError;
+import io.protop.core.error.ServiceException;
 import io.protop.core.manifest.converters.PathListToStringList;
 import io.protop.core.manifest.converters.StringToVersion;
 import io.protop.core.manifest.converters.VersionToString;
-import io.protop.core.error.ServiceError;
-import io.protop.core.error.ServiceException;
 import io.protop.version.Version;
-import java.io.*;
+import lombok.Getter;
+import lombok.experimental.SuperBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import javax.validation.constraints.NotNull;
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
-import javax.validation.constraints.NotNull;
-import lombok.Getter;
-import lombok.experimental.SuperBuilder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 @Getter
 @SuperBuilder

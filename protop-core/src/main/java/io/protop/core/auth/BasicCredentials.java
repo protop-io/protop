@@ -1,8 +1,9 @@
 package io.protop.core.auth;
 
-import java.net.URI;
 import lombok.Builder;
 import lombok.Getter;
+
+import java.net.URI;
 
 @Getter
 @Builder

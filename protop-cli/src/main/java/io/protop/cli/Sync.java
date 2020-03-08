@@ -11,11 +11,13 @@ import io.protop.core.sync.DependencyResolutionConfiguration;
 import io.protop.core.sync.IncompleteSync;
 import io.protop.core.sync.SyncService;
 import io.protop.core.sync.status.SyncStatus;
+import io.protop.utils.UriUtils;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.ParentCommand;
+
 import java.nio.file.Path;
 import java.util.Optional;
-
-import io.protop.utils.UriUtils;
-import picocli.CommandLine.*;
 
 @Command(name = "sync",
         description = "Sync project dependencies.")

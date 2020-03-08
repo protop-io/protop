@@ -2,6 +2,7 @@ package io.protop.core.auth;
 
 import io.reactivex.Completable;
 import io.reactivex.Maybe;
+
 import java.net.URI;
 
 public interface AuthService<T extends Credentials> {

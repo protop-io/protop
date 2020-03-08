@@ -3,12 +3,13 @@ package io.protop.core.auth;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.protop.core.logs.Logger;
+import lombok.Builder;
+import lombok.Getter;
+
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
-import lombok.Builder;
-import lombok.Getter;
 
 /**
  * Contains all saved credentials mapping to registries. Multiple credentials are not allowed for a single registry.

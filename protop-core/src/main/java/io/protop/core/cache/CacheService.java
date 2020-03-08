@@ -1,17 +1,23 @@
 package io.protop.core.cache;
 
+import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageService;
 import io.protop.version.Version;
+import io.reactivex.Completable;
 import io.reactivex.Single;
 import lombok.AllArgsConstructor;
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
@@ -93,6 +99,7 @@ public class CacheService {
 
     private void unlock(Path dependencyDir) {
         logger.info("Unlocking dependencies.");
+        // TODO handle "false" response
         walkAndApply(dependencyDir, file -> file.setWritable(true));
     }
 
@@ -100,6 +107,7 @@ public class CacheService {
      * Makes the directory and everything in it un-writable, mainly to protect against accidental modifications.
      */
     private void lock(Path dependencyDir) {
+        // TODO handle "false" response
         walkAndApply(dependencyDir, File::setReadOnly);
     }
 
@@ -111,7 +119,24 @@ public class CacheService {
                 consumer.accept(child.toFile());
             });
         } catch (IOException e) {
-            logger.warn("Failed to walk file tree / to apply changes.", e);
+            logger.warn("Failed to walk file tree and/or apply changes.", e);
         }
+    }
+
+    /**
+     * Clean everything from the cache.
+     */
+    public Completable clean() {
+        return Completable.create(emitter -> {
+            Path cache = Storage.pathOf(Storage.GlobalDirectory.CACHE);
+
+            try {
+                unlock(cache);
+                FileUtils.cleanDirectory(cache.toFile());
+                emitter.onComplete();
+            } catch (Exception e) {
+                emitter.onError(new ServiceException("Failed to clear cache."));
+            }
+        });
     }
 }

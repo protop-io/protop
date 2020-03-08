@@ -2,7 +2,6 @@ package io.protop.core.sync;
 
 import io.protop.core.Context;
 import io.protop.core.auth.AuthService;
-import io.protop.core.auth.AuthToken;
 import io.protop.core.cache.CacheService;
 import io.protop.core.cache.CachedProjectsMap;
 import io.protop.core.error.ServiceException;
@@ -10,24 +9,22 @@ import io.protop.core.logs.Logger;
 import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.utils.HttpUtils;
 import io.protop.utils.RegistryUtils;
-import io.protop.utils.UriUtils;
 import io.protop.version.Version;
 import io.reactivex.Maybe;
 import io.reactivex.Single;
-
-import java.net.URI;
-import java.nio.file.Path;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicReference;
-
 import lombok.AllArgsConstructor;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 
+import java.net.URI;
+import java.nio.file.Path;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicReference;
+
 /**
- * Resolves dependencies published to a registry.
+ * Resolves dependencies if they have been published to a registry.
  */
 @AllArgsConstructor
 public class ExternalDependencyResolver implements DependencyResolver {
@@ -90,24 +87,13 @@ public class ExternalDependencyResolver implements DependencyResolver {
     //  a reference of the cache used for all resolved dependencies
     private Maybe<Path> retrieveAndCache(ProjectCoordinate coordinate, Version version) {
         return Maybe.create(emitter -> {
-            URI registryUri = context.getRc().getRepositoryUri();
-            logger.info("Attempting to retrieve {} {} from {}.", coordinate, version, registryUri);
-
-            Optional<AuthToken> authToken = Optional.ofNullable(
-                    authService.getStoredToken(registryUri).blockingGet());
-            // Not all GETs may need to be authenticated, but in case it is a private org/package, this is necessary.
-            HttpClient client = authToken
-                    .map(HttpUtils::createHttpClientWithToken)
-                    .orElseGet(HttpUtils::createHttpClient);
             // TODO handle uri composition more cleanly
-            URI uri = UriUtils.appendPathSegments(
-                    registryUri,
-                    coordinate.getOrganizationId(),
-                    coordinate.getProjectId(),
-                    "-",
-                    RegistryUtils.createTarballName(coordinate, version));
-            HttpGet get = new HttpGet(uri);
-            HttpResponse response = client.execute(get);
+            URI uri = RegistryUtils.createTarballUri(
+                    getRegistryUri(),
+                    coordinate,
+                    version);
+            HttpResponse response = createHttpClient()
+                    .execute(new HttpGet(uri));
 
             int statusCode = response.getStatusLine().getStatusCode();
             if (statusCode != HttpStatus.SC_OK) {
@@ -124,5 +110,15 @@ public class ExternalDependencyResolver implements DependencyResolver {
                 emitter.onSuccess(path);
             }
         });
+    }
+
+    private URI getRegistryUri() {
+        return context.getRc().getRepositoryUri();
+    }
+
+    private HttpClient createHttpClient() {
+        return Optional.ofNullable(authService.getStoredToken(getRegistryUri()).blockingGet())
+                .map(HttpUtils::createHttpClientWithToken)
+                .orElseGet(HttpUtils::createHttpClient);
     }
 }

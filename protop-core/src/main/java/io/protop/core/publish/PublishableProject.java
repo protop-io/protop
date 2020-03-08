@@ -1,20 +1,12 @@
 package io.protop.core.publish;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
-import io.protop.core.logs.Logger;
-import io.protop.core.manifest.Manifest;
 import io.protop.core.error.ServiceError;
 import io.protop.core.error.ServiceException;
-import javax.validation.constraints.NotNull;
-import java.io.*;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Objects;
-import java.util.UUID;
-import java.util.stream.Collectors;
-
+import io.protop.core.logs.Logger;
+import io.protop.core.manifest.Manifest;
 import io.protop.core.storage.Storage;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -26,12 +18,31 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.io.filefilter.TrueFileFilter;
 
+import javax.validation.constraints.NotNull;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 @Getter
 @AllArgsConstructor
 public class PublishableProject {
 
     private static final Logger logger = Logger.getLogger(PublishableProject.class);
+
     private static final String PROTO_FILE_EXT = "proto";
+    private static final Set<String> publishableFileExtensions = ImmutableSet.of(
+            PROTO_FILE_EXT);
+
+    private static final String MANIFEST_NAME = "protop.json";
+    private static final Set<String> publishableFileNames = ImmutableSet.of(
+            MANIFEST_NAME);
 
     @NotNull
     private final Manifest manifest;
@@ -98,13 +109,15 @@ public class PublishableProject {
                 path.toFile(), TrueFileFilter.INSTANCE, TrueFileFilter.INSTANCE);
 
         return files.stream()
-                .filter(PublishableProject::isProtoFile)
+                .filter(PublishableProject::isPublishableFile)
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
     @SuppressWarnings("UnstableApiUsage")
-    private static boolean isProtoFile(File file) {
-        return Objects.equals(PROTO_FILE_EXT, Files.getFileExtension(file.getName()));
+    private static boolean isPublishableFile(File file) {
+        String extension = Files.getFileExtension(file.getName());
+        return publishableFileExtensions.contains(extension)
+                || publishableFileNames.contains(file.getName());
     }
 
     @Getter

@@ -5,7 +5,9 @@ import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
 import lombok.Getter;
 import picocli.CommandLine;
-import picocli.CommandLine.*;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.HelpCommand;
+import picocli.CommandLine.Option;
 
 @Command(name = "protop",
         header = {
@@ -23,7 +25,8 @@ import picocli.CommandLine.*;
                 Login.class,
                 Logout.class,
                 Link.class,
-                Sync.class
+                Sync.class,
+                Cache.class
         },
         description = "...")
 class ProtopCli implements Runnable {

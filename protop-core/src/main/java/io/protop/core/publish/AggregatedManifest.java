@@ -2,18 +2,18 @@ package io.protop.core.publish;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import io.protop.core.manifest.converters.VersionToString;
 import io.protop.core.logs.Logger;
+import io.protop.core.manifest.converters.VersionToString;
 import io.protop.version.Version;
-import java.io.File;
-import java.io.IOException;
-import java.util.Base64;
-import java.util.Map;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import org.apache.commons.io.FileUtils;
 
 import javax.validation.constraints.NotNull;
+import java.io.File;
+import java.io.IOException;
+import java.util.Base64;
+import java.util.Map;
 
 @Builder
 public class AggregatedManifest {

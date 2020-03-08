@@ -1,14 +1,13 @@
 package io.protop.utils;
 
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Objects;
-
 import com.google.common.base.Strings;
 import org.apache.http.client.utils.URIBuilder;
 
 import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Objects;
 
 public class UriUtils {
 

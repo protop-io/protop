@@ -3,6 +3,7 @@ package io.protop.core.sync;
 import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.version.Version;
 import io.reactivex.Single;
+
 import java.nio.file.Path;
 import java.util.Map;
 

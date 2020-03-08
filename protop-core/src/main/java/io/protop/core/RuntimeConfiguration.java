@@ -3,6 +3,12 @@ package io.protop.core;
 import io.protop.core.error.ServiceError;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
+import io.protop.utils.UriUtils;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+
+import javax.validation.constraints.NotNull;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -14,11 +20,6 @@ import java.security.InvalidParameterException;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
-import javax.validation.constraints.NotNull;
-import io.protop.utils.UriUtils;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
 
 @Getter
 @Builder

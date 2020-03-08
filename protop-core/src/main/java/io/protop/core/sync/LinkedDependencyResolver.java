@@ -1,11 +1,12 @@
 package io.protop.core.sync;
 
-import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.core.error.ServiceException;
 import io.protop.core.link.LinkedProjectsMap;
 import io.protop.core.logs.Logger;
+import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.version.Version;
 import io.reactivex.Single;
+
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.HashSet;

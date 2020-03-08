@@ -1,11 +1,13 @@
 package io.protop.cli;
 
+import io.protop.core.link.LinkService;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
-import io.protop.core.link.LinkService;
 import io.protop.core.publish.PublishableProject;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.ParentCommand;
+
 import java.nio.file.Path;
-import picocli.CommandLine.*;
 
 @Command(name = "link",
         description = "Link current project for access from other local projects.")

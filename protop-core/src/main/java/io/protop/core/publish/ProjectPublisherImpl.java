@@ -3,21 +3,17 @@ package io.protop.core.publish;
 import com.google.common.collect.ImmutableMap;
 import io.protop.core.Context;
 import io.protop.core.Environment;
-import io.protop.utils.HttpUtils;
-import io.protop.core.auth.AuthToken;
 import io.protop.core.auth.AuthService;
+import io.protop.core.auth.AuthToken;
 import io.protop.core.error.ServiceError;
-import io.protop.core.manifest.Manifest;
-import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
+import io.protop.core.manifest.Manifest;
+import io.protop.core.manifest.ProjectCoordinate;
+import io.protop.utils.HttpUtils;
 import io.protop.utils.RegistryUtils;
 import io.protop.utils.UriUtils;
 import io.reactivex.Completable;
-import java.io.IOException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.util.Optional;
 import lombok.AllArgsConstructor;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
@@ -27,6 +23,11 @@ import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
+
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Optional;
 
 @AllArgsConstructor
 public class ProjectPublisherImpl implements ProjectPublisher {

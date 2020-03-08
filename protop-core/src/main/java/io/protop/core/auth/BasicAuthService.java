@@ -3,17 +3,14 @@ package io.protop.core.auth;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.protop.api.auth.AuthTokenResponse;
 import io.protop.core.Environment;
-import io.protop.utils.HttpUtils;
 import io.protop.core.error.ServiceError;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageService;
+import io.protop.utils.HttpUtils;
 import io.reactivex.Completable;
 import io.reactivex.Maybe;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.file.Path;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.HttpClient;
@@ -21,6 +18,10 @@ import org.apache.http.client.methods.HttpPut;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
+
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
 
 public class BasicAuthService implements AuthService<BasicCredentials> {
 
@@ -61,7 +62,7 @@ public class BasicAuthService implements AuthService<BasicCredentials> {
                         .registry(credentials.getRegistry())
                         .value(authTokenResponse.getToken())
                         .build());
-                storageService.storeJson(credentialStore, storageFilePath);
+                save(credentialStore);
                 emitter.onComplete();
             } else {
                 // TODO handle better
@@ -82,8 +83,16 @@ public class BasicAuthService implements AuthService<BasicCredentials> {
 
     @Override
     public Completable forget(URI registry) {
-        // TODO
-        return Completable.complete();
+        return Completable.create(emitter -> {
+            CredentialStore credentialStore = loadCredentialStore();
+            credentialStore.remove(registry);
+            save(credentialStore);
+            emitter.onComplete();
+        });
+    }
+
+    private void save(CredentialStore credentialStore) {
+        storageService.storeJson(credentialStore, storageFilePath);
     }
 
     private CredentialStore loadCredentialStore() {

@@ -1,18 +1,19 @@
 package io.protop.core.link;
 
-import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.core.error.ServiceException;
+import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.core.storage.Storage;
 import io.reactivex.Single;
+import lombok.AccessLevel;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
 
 /**
  * Represents all dependencies that are currently linked on the machine.

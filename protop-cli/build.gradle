@@ -17,4 +17,11 @@ compileJava {
     options.compilerArgs += ["-Aproject=${project.group}/${project.name}"]
 }
 
+plugins.withType(DistributionPlugin) {
+    distTar {
+        compression = Compression.GZIP
+        setExtension("tar.gz")
+    }
+}
+
 mainClassName = "io.protop.cli.ProtopCli"

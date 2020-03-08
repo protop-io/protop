@@ -2,7 +2,9 @@ package io.protop.cli;
 
 import com.google.common.base.Strings;
 import io.protop.core.Environment;
-import io.protop.core.auth.*;
+import io.protop.core.auth.AuthService;
+import io.protop.core.auth.BasicAuthService;
+import io.protop.core.auth.BasicCredentials;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
 import io.protop.core.storage.StorageService;
@@ -11,7 +13,9 @@ import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.MaskingCallback;
 import org.jline.reader.impl.DefaultParser;
-import picocli.CommandLine.*;
+import picocli.CommandLine.Command;
+import picocli.CommandLine.Option;
+import picocli.CommandLine.ParentCommand;
 
 import java.net.URI;
 
