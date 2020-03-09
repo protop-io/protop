@@ -21,7 +21,7 @@ In the cloned repository, run the install script in the root directory:
 $ ./install.sh
 ```
 
-This will prompt you to add `~/.protop/bin` to your PATH if it is not already there. Now you should be able to run `protop --help` to see a full list of commands/options.
+This will prompt you to add `~/.protop/bin` to your PATH if it is not already there. Now you should be able to run `protop help` to see a full list of commands/options.
 
 ## Usage
 
@@ -70,7 +70,7 @@ The directory tree should now look like this:
 Protop creates symbolic links to projects in a system-wide cache where all dependencies are stored whether they were `protop link`ed or retrieved from an external repository.
 
 ### Use with protoc
-With dependencies synced, you can call `protoc` in a project that looks like this:
+With dependencies synced, you can call `protoc` in a project that looks like the one above:
 
 
 ```bash
