@@ -56,15 +56,61 @@ Syncing registered dependencies.
 Done syncing.
 ```
 
+The directory tree should now look like this:
+```bash
+.
+├── protop
+│   └── path
+│       └── org_a
+│           └── project_a -> ~/.protop/cache/other_org/other_project/1.2.1
+├── protop.json
+├── AwesomeProto.proto
+└── out
+```
+Protop creates symbolic links to projects in a system-wide cache where all dependencies are stored whether they were `protop link`ed or retrieved from an external repository.
+
+### Use with protoc
+With dependencies synced, you can call `protoc` in a project that looks like this:
+
+
+```bash
+protoc --proto_path=protop/path \
+       --java_out=out \
+       AwesomeProto.proto
+```
+
 ### Publish to a repository
 ```bash
-$ protop publish
+$ protop publish -r=https://repository.example.com
 ```
 
 There is an implementation of a Nexus plugin for protop required for this to work. More details [here](https://github.com/protop-io/nexus-repository-protop). Coming soon, there will be better documentation on the API of the repository itself.
 
+### `.protoprc` configuration
+
+Create a `.protoprc` file in the project directory to configure options that generally won't change, such as the repository URI. For example:
+```properties
+repository=https://repository.example.com
+```
+
+Currently, the following properties are recognized:
+- `repository`: repository URI
+- `publish.repository`: repository URI for publishing (prioritized over `repository`)
+- `retrieve.repository`: repository URI for retrieving (prioritized over `repository`)
+
+# Roadmap
+
+There are a few technical debts that need to be resolved before any big features will be added (mostly better tests), but here are a few of the bigger items on the roadmap:
+
+- Install via Homebrew (and others?)
+- Production repository - At least initially, this will be implemented using the Nexus Repository Manager using the protop plugin.
+- Interface for joining the repository and creating organizations (probably somewhere at _something.protop.io_)
+- Full documentation at [protop.io](http://protop.io)
+- Integration with Gradle and other development tools
+- More contributors!
+
 # Development
 
-Protop is written in Java using the `picocli` CLI framework and Gradle for building. There are two main modules in this library, `protop-cli` which is the entry point for the CLI, and `protop-core` which contains all of the actual business logic.
+Protop is written in Java using the [Picocli](https://github.com/remkop/picocli) CLI framework. There are two main modules in this library, `protop-cli` which is the entry point for the CLI, and `protop-core` which contains all of the actual business logic.
 
 To fully test with publishing, follow the [repository documentation](https://github.com/protop-io/nexus-repository-protop). The Nexus plugin is still in development and considered unstable for production, but it is stable enough for feature development of the CLI at this point.
