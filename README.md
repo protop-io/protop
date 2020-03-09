@@ -1,4 +1,6 @@
-![protop logo](./assets/logo.png)
+<p align="center">
+    <img src="assets/logo.png" alt="protop logo" width="400px"/>
+</p>
 
 # protop
 
