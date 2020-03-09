@@ -80,7 +80,7 @@ public class Storage {
     @AllArgsConstructor
     public enum ProjectDirectory {
 
-        PROTOP(".protop"),
+        PROTOP("protop"),
 
         DEPS("deps");
 

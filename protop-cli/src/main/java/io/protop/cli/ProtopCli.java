@@ -25,6 +25,7 @@ import picocli.CommandLine.Option;
                 Login.class,
                 Logout.class,
                 Link.class,
+                Unlink.class,
                 Sync.class,
                 Cache.class
         },

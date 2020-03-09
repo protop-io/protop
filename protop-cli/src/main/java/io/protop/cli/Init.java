@@ -76,7 +76,8 @@ public class Init implements Runnable {
             logger.info("Creating new package manifest.");
             projectCreator.create(manifest, directory);
 
-            logger.always(String.format("Initialized new project."));
+            logger.always("Initialized new project.");
+            recommendGitignore(directory);
         } catch (Exception e) {
             logger.always("Failed to create new project.");
             if (!Strings.isNullOrEmpty(e.getMessage()) && (e instanceof ServiceException)) {
@@ -134,6 +135,12 @@ public class Init implements Runnable {
             } catch (InvalidVersionString e) {
                 throw new ServiceException(ServiceError.MANIFEST_ERROR, e);
             }
+        }
+    }
+
+    private void recommendGitignore(Path path) {
+        if (path.resolve(".gitignore").toFile().exists()) {
+            logger.always("It is recommended to add \"protop/\" and \".protoprc\" to your .gitignore.");
         }
     }
 }

@@ -28,9 +28,10 @@ public class Sync implements Runnable {
     @ParentCommand
     private ProtopCli protop;
 
-    @Option(names = {"-l", "--include_linked"},
+    @Option(names = {"-l", "--use-links"},
             required = false,
-            defaultValue = "true")
+            arity = "0..1",
+            defaultValue = "false")
     private Boolean includeLinkedDependencies;
 
     @Option(names = {"-r", "--registry"},

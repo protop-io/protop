@@ -12,7 +12,6 @@ import io.protop.core.publish.ProjectPublisherImpl;
 import io.protop.core.publish.PublishableProject;
 import io.protop.core.storage.StorageService;
 import io.protop.utils.UriUtils;
-import io.reactivex.Completable;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -59,23 +58,25 @@ public class Publish implements Runnable {
 
         PublishableProject project = PublishableProject.from(location);
 
-        handle(projectPublisher.publish(project));
+        projectPublisher.publish(project)
+                .subscribe(this::handleSuccess, this::handleError)
+                .dispose();
     }
 
-    private void handle(Completable completable) {
-        completable.subscribe(() -> {
-            // TODO better message
-            logger.always("Published!");
-        }, e -> {
-            if (e instanceof ServiceException) {
-                String message = String.format("Failed to publish: %s. Retry with -d for more details.", e.getMessage());
-                logger.always(message);
-            } else {
-                if (!protop.isDebugMode()) {
-                    logger.always("Something unexpected happened. Retry with -d for more details.");
-                }
-                logger.error(e.getMessage(), e);
+    private void handleSuccess() {
+        // TODO better message
+        logger.always("Published!");
+    }
+
+    private void handleError(Throwable t) {
+        if (t instanceof ServiceException) {
+            String message = String.format("Failed to publish: %s. Retry with -d for more details.", t.getMessage());
+            logger.always(message);
+        } else {
+            if (!protop.isDebugMode()) {
+                logger.always("Something unexpected happened. Retry with -d for more details.");
             }
-        }).dispose();
+            logger.error(t.getMessage(), t);
+        }
     }
 }

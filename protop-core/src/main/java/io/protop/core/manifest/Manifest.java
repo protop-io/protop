@@ -45,6 +45,8 @@ public class Manifest {
     @JsonProperty("organization")
     private String organization;
 
+
+
     @JsonProperty("include")
     @JsonSerialize(converter = PathListToStringList.class)
     private List<Path> include;

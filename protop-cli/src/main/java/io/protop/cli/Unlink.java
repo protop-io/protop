@@ -4,18 +4,17 @@ import io.protop.core.link.LinkService;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
 import io.protop.core.publish.PublishableProject;
-import picocli.CommandLine.Command;
-import picocli.CommandLine.ParentCommand;
+import picocli.CommandLine;
 
 import java.nio.file.Path;
 
-@Command(name = "link",
-        description = "Link a local project.")
-public class Link implements Runnable {
+@CommandLine.Command(name = "unlink",
+        description = "Unlink a local project.")
+public class Unlink implements Runnable {
 
     private static final Logger logger = Logger.getLogger(Link.class);
 
-    @ParentCommand
+    @CommandLine.ParentCommand
     private ProtopCli protop;
 
     @Override
@@ -24,6 +23,6 @@ public class Link implements Runnable {
 
         Path location = Path.of(".");
 
-        new LinkService().link(PublishableProject.from(location));
+        new LinkService().unlink(PublishableProject.from(location));
     }
 }
