@@ -104,7 +104,8 @@ public class ExternalDependencyResolver implements DependencyResolver {
             Map<Version, Manifest> versionManifestMap = new HashMap<>();
             versionPathMap.forEach((version, path) -> {
                 // TODO handle better
-                versionManifestMap.put(version, Manifest.from(path).orElseThrow());
+                Manifest manifest = Manifest.from(path).orElseThrow();
+                versionManifestMap.put(version, manifest);
             });
             output.put(coordinate, versionManifestMap);
         });
