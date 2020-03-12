@@ -1,9 +1,9 @@
 #!/bin/bash
 
 echo ""
-echo "--------------------"
-echo "protop dev installer"
-echo "--------------------
+echo "----------------"
+echo "protop installer"
+echo "----------------
 "
 
 protop_say()
@@ -37,6 +37,8 @@ protop_say "Deleting previous installation"
 
 rm -rf $dir/bin
 mkdir $dir/bin
+rm -rf $dir/lib
+mkdir $dir/lib
 
 mv $tmp/*/* $dir/
 mv $dir/bin/protop-cli $dir/bin/protop
@@ -45,9 +47,11 @@ cd $dir && rm -rf $tmp
 
 if [[ ":$PATH:" == *":$HOME/.protop/bin:"* ]]; then
     protop_say "\`~/.protop/bin\` already in PATH"
-    protop_say "Finished! Try \`protop\` or \`protop help\` to get started!"
+    protop_say "Succeeded!
+"
+    protop
 else
     protop_say "Your path is missing \`~/.protop/bin\`; you will need to add it:"
-    protop_say "  - Add \`export PATH=\"\$PATH:\$HOME/.protop/bin\"\` to your \`~/.bashrc\` or \`~/.zshrc\`."
+    protop_say "  - Add \`export PATH=\"\$PATH:\$HOME/.protop/bin\"\` to your \`~/.bashrc\` or \`~/.zshrc\` etc."
     protop_say "  - Then try \`protop\` or \`protop help\` to get started!"
 fi

@@ -10,7 +10,7 @@ import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageService;
 import io.protop.core.sync.status.SyncStatus;
 import io.protop.core.sync.status.Syncing;
-import io.protop.version.Version;
+import io.protop.core.version.Version;
 import io.reactivex.Observable;
 import org.apache.commons.io.FileUtils;
 

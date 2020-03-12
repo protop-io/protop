@@ -23,7 +23,7 @@ public class Cache implements Runnable {
     private ProtopCli protop;
 
     public void run() {
-        // TODO
+        new CommandLine(new ProtopCli()).execute("help", "cache");
     }
 
     @CommandLine.Command(name = "clean",

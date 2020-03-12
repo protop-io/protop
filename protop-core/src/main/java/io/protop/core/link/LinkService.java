@@ -39,12 +39,9 @@ public class LinkService {
         }
     }
 
-    public void link(ProjectCoordinate other) {
-        // TODO
-    }
-
-    public void unlink(ProjectCoordinate other) {
-        // TODO
+    public void clean() throws IOException {
+        Path linksDirectory = getLinksDirectory();
+        Files.list(linksDirectory).forEach(path -> path.toFile().deleteOnExit());
     }
 
     private Path getPathToLink(ProjectCoordinate coordinate) throws IOException {

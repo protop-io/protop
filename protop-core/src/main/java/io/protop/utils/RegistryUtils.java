@@ -1,7 +1,7 @@
 package io.protop.utils;
 
 import io.protop.core.manifest.ProjectCoordinate;
-import io.protop.version.Version;
+import io.protop.core.version.Version;
 
 import java.net.URI;
 import java.net.URISyntaxException;

@@ -5,7 +5,7 @@ import io.protop.core.logs.Logger;
 import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageService;
-import io.protop.version.Version;
+import io.protop.core.version.Version;
 import io.reactivex.Completable;
 import io.reactivex.Single;
 import lombok.AllArgsConstructor;

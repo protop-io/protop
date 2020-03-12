@@ -4,12 +4,8 @@ import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.protop.core.logs.Logger;
-import io.protop.core.manifest.converters.StringManifestMapToVersionManifestMap;
-import io.protop.core.manifest.converters.StringToVersion;
-import io.protop.core.manifest.converters.VersionToString;
-import io.protop.version.Version;
+import io.protop.core.version.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -43,7 +39,6 @@ public class AggregatedManifest {
 
     @NotNull
     @JsonProperty
-    @JsonSerialize(converter = VersionToString.class)
     private final Version version;
 
     @NotNull
@@ -74,7 +69,6 @@ public class AggregatedManifest {
                        @JsonProperty("name")
                                String name,
                        @JsonProperty("version")
-                       @JsonDeserialize(converter = StringToVersion.class)
                                Version version,
                        @JsonProperty("description")
                                String description,
@@ -82,7 +76,6 @@ public class AggregatedManifest {
                        @JsonDeserialize(as = HashMap.class)
                                Map<String, String> distTags,
                        @JsonProperty("versions")
-                       @JsonDeserialize(converter = StringManifestMapToVersionManifestMap.class)
                                Map<Version, Manifest> versions,
                        @JsonProperty("readme")
                                String readme,

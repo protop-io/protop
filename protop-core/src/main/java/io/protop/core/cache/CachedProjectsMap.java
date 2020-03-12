@@ -3,10 +3,9 @@ package io.protop.core.cache;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.manifest.ProjectCoordinate;
-import io.protop.core.manifest.ProjectVersionBuilder;
 import io.protop.core.storage.Storage;
-import io.protop.version.InvalidVersionString;
-import io.protop.version.Version;
+import io.protop.core.version.InvalidVersionString;
+import io.protop.core.version.Version;
 import io.reactivex.Single;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -57,7 +56,7 @@ public class CachedProjectsMap {
                         Files.list(projectDir).forEach(versionPath -> {
                             String fileName = versionPath.toFile().getName();
                             try {
-                                Version version = Version.valueOf(ProjectVersionBuilder.scheme, fileName);
+                                Version version = new Version(fileName);
                                 versions.put(version, versionPath);
                             } catch (InvalidVersionString e) {
                                 logger.debug("Not a valid version; skipping {}.", fileName);

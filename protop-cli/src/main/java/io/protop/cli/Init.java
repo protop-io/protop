@@ -4,15 +4,12 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import io.protop.core.ProjectCreator;
 import io.protop.core.ProjectCreatorImpl;
-import io.protop.core.error.ServiceError;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
 import io.protop.core.manifest.Manifest;
-import io.protop.core.manifest.ProjectVersionBuilder;
 import io.protop.core.storage.StorageService;
-import io.protop.version.InvalidVersionString;
-import io.protop.version.Version;
+import io.protop.core.version.Version;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.MaskingCallback;
@@ -30,12 +27,7 @@ import java.util.List;
 public class Init implements Runnable {
 
     private static final Logger logger = Logger.getLogger(Init.class);
-    private static final Version defaultVersion = ProjectVersionBuilder.newInstance()
-            .major(1970)
-            .minor(1)
-            .micro(1)
-            .modifier("SNAPSHOT")
-            .build();
+    private static final Version defaultVersion = new Version("0.1.0");
     private static final String CWD = ".";
 
     @ParentCommand
@@ -51,8 +43,6 @@ public class Init implements Runnable {
         Logs.enableIf(protop.isDebugMode());
 
         logger.info("Creating a new project.");
-
-        logger.info("default version is: " + defaultVersion.toString());
 
         LineReader reader = LineReaderBuilder.builder()
                 .parser(new DefaultParser())
@@ -73,7 +63,6 @@ public class Init implements Runnable {
         ProjectCreator projectCreator = new ProjectCreatorImpl(storageService);
 
         try {
-            logger.info("Creating new package manifest.");
             projectCreator.create(manifest, directory);
 
             logger.always("Initialized new project.");
@@ -130,11 +119,7 @@ public class Init implements Runnable {
         if (Strings.isNullOrEmpty(version)) {
             return defaultVersion;
         } else {
-            try {
-                return Version.valueOf(ProjectVersionBuilder.scheme, version);
-            } catch (InvalidVersionString e) {
-                throw new ServiceException(ServiceError.MANIFEST_ERROR, e);
-            }
+            return new Version(version);
         }
     }
 

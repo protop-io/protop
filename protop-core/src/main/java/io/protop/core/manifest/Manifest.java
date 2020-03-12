@@ -2,7 +2,6 @@ package io.protop.core.manifest;
 
 import com.fasterxml.jackson.annotation.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.collect.ImmutableList;
 import io.protop.core.Environment;
@@ -10,9 +9,7 @@ import io.protop.core.error.ServiceError;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.manifest.converters.PathListToStringList;
-import io.protop.core.manifest.converters.StringToVersion;
-import io.protop.core.manifest.converters.VersionToString;
-import io.protop.version.Version;
+import io.protop.core.version.Version;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 
@@ -39,7 +36,6 @@ public class Manifest {
     protected String name;
 
     @JsonProperty("version")
-    @JsonSerialize(converter = VersionToString.class)
     private Version version;
 
     @JsonProperty("organization")
@@ -73,7 +69,7 @@ public class Manifest {
     @JsonCreator
     Manifest(
             @JsonProperty("name") @NotNull String name,
-            @JsonProperty("version") @JsonDeserialize(converter = StringToVersion.class) @NotNull Version version,
+            @JsonProperty("version") @NotNull Version version,
             @JsonProperty("organization") @NotNull String organization,
             @JsonProperty("include") List<Path> include,
             @JsonProperty("dependencies") DependencyMap dependencies,

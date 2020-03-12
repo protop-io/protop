@@ -1,7 +1,7 @@
 package io.protop.core.sync;
 
 import io.protop.core.manifest.ProjectCoordinate;
-import io.protop.version.Version;
+import io.protop.core.version.Version;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 

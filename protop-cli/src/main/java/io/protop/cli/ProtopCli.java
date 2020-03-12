@@ -26,6 +26,7 @@ import picocli.CommandLine.Option;
                 Logout.class,
                 Link.class,
                 Unlink.class,
+                Links.class,
                 Sync.class,
                 Cache.class
         },
@@ -51,10 +52,16 @@ class ProtopCli implements Runnable {
         Logs.enableIf(debugMode);
 
         if (logVersion) {
-            logger.always("protop version " + Environment.getInstance().getVersion());
+            logVersion();
         } else {
             new CommandLine(new ProtopCli()).execute("help");
         }
+    }
+
+    private void logVersion() {
+        Environment.getInstance().getVersion().ifPresentOrElse(
+                v -> logger.always("protop " + v),
+                () -> logger.always("Could not determine the current version of protop."));
     }
 
     public static void main(String... args) {

@@ -1,7 +1,7 @@
 package io.protop.core.error;
 
 import io.protop.core.manifest.ProjectCoordinate;
-import io.protop.version.Version;
+import io.protop.core.version.Version;
 
 public class PackageNotFound extends ServiceException {
 
