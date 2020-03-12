@@ -18,6 +18,12 @@ compileJava {
 }
 
 jar {
+    archivesBaseName = "protop-cli"
+}
+
+task distFatJar(type: Jar) {
+    archiveFileName = "protop-cli.jar"
+
     manifest {
         attributes (
                 'Protop-Version' : project.version,
@@ -28,7 +34,7 @@ jar {
                 "Main-Class"     : "io.protop.cli.ProtopCli"
         )
     }
-    //baseName = "all-in-one"
+
     from sourceSets.main.output
     from configurations.runtimeClasspath.
             findAll { it.name.endsWith('jar') }.
@@ -36,16 +42,24 @@ jar {
 }
 
 plugins.withType(DistributionPlugin) {
+    distZip {
+        enabled = false
+    }
     distTar {
         compression = Compression.GZIP
         setExtension("tar.gz")
+        
+        if (!project.hasProperty("dev")) {
+            include("protop-cli.jar")
+            include("MANIFEST.MF")
+        }
     }
 }
 
 distributions {
     main {
         contents {
-            from jar
+            from distFatJar
         }
     }
 }

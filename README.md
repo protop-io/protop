@@ -12,10 +12,32 @@ Protop is welcome to contributions; if you are interested in the technology, ple
 
 _WARNING: This project is super fresh and relatively untested in the wild. If you have any thoughts about improvements or issues, please report them / let's chat!_
 
-## Installation
-We are working on making this as easy as possible starting with Homebrew.
+## Install
 
-### Install from source
+### From Homebrew
+Protop is available from our tap. You'll only need to add the tap once:
+```bash
+brew tap protop-io/protop
+```
+
+Install protop with `brew`. It will automatically search our tap:
+```bash
+brew install protop
+```
+
+You can test that the installation worked:
+```bash
+protop
+```
+
+To install upgrades:
+```bash
+brew upgrade protop
+```
+
+### From the source
+This is only necessary if you are actively developing or if you are not able to use Homebrew.
+
 In the cloned repository, run the install script in the root directory:
 ```bash
 $ ./install.sh

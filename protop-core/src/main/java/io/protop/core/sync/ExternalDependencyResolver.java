@@ -184,7 +184,7 @@ public class ExternalDependencyResolver implements DependencyResolver {
 
             int statusCode = response.getStatusLine().getStatusCode();
             if (statusCode != HttpStatus.SC_OK) {
-                String message = String.format("Did not find project in registry: {}.", coordinate);
+                String message = String.format("Did not find project in registry: %s.", coordinate);
                 logger.error(message);
                 emitter.onError(new ServiceException(message));
             } else {

@@ -17,32 +17,38 @@ protop_say "\`gradle clean\`"
 $gradle clean -q
 
 protop_say "\`gradle build\`"
-$gradle build -q
+$gradle build -Pdev -q
 
 # move distribution
 dir=~/.protop
 tmp=$dir/tmp
 
 protop_say "Moving build artifacts to temporary directory"
-
 mkdir -p $tmp
 rm -rf $tmp/*
-dist=$tmp/dist.zip
-cp ./protop-cli/build/distributions/*.zip $dist
+dist=$tmp/dist.tar.gz
+cp ./protop-cli/build/distributions/*.tar.gz $dist
 cd $tmp
 
 # unpack
-unzip -qq $dist
-protop_say "Deleting previous installation"
+protop_say "Unpacking artifacts"
+tar -C . -zxf $dist
 
+protop_say "Deleting previous installation"
 rm -rf $dir/bin
 mkdir $dir/bin
 rm -rf $dir/lib
 mkdir $dir/lib
 
-mv $tmp/*/* $dir/
+protop_say "Moving binaries to their new home"
+mv $tmp/*/bin/* $dir/bin/
 mv $dir/bin/protop-cli $dir/bin/protop
 mv $dir/bin/protop-cli.bat $dir/bin/protop.bat
+
+# and jars
+mv $tmp/*/lib/* $dir/lib/
+
+# cleanup
 cd $dir && rm -rf $tmp
 
 if [[ ":$PATH:" == *":$HOME/.protop/bin:"* ]]; then
