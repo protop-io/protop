@@ -4,16 +4,15 @@
 name: Build Release
 
 on:
-  push:
+  pull_request:
+    types: [closed]
     branches:
-      - "master"
-    tags:
-      - "v*"
+      - master
 
 jobs:
-  build:
-
+  build_artifacts:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged
 
     steps:
     - uses: actions/checkout@v2
@@ -25,9 +24,5 @@ jobs:
       run: chmod +x gradlew
     - name: Build with Gradle
       run: ./gradlew build
-      
-    - name: Create a Release
-      uses: actions/create-release@v1
-      
-      
+
       
