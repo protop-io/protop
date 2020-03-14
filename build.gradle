@@ -11,7 +11,7 @@ description = "Protop CLI"
 
 allprojects {
     group = "io.protop"
-    version = "0.4.2"
+    version = "0.4.3"
 
     apply plugin: "java"
 
@@ -73,14 +73,20 @@ task distFatJar(type: Jar) {
 plugins.withType(DistributionPlugin) {
     distZip {
         archiveFileName = "${DIST_NAME}.zip"
-        include(DIST_JAR_NAME)
-        include(MANIFEST_NAME)
+
+        if (!project.hasProperty("dev")) {
+            include(DIST_JAR_NAME)
+            include(MANIFEST_NAME)
+        }
     }
     distTar {
         compression = Compression.GZIP
         archiveFileName = "${DIST_NAME}.tgz"
-        include(DIST_JAR_NAME)
-        include(MANIFEST_NAME)
+
+        if (!project.hasProperty("dev")) {
+            include(DIST_JAR_NAME)
+            include(MANIFEST_NAME)
+        }
     }
 }
 
