@@ -21,7 +21,7 @@ public class LinkService {
             ProjectCoordinate coordinate = getCoordinate(project);
             Path linkPath = getPathToLink(coordinate);
             Files.deleteIfExists(linkPath);
-            Files.createLink(linkPath, project.getProjectLocation());
+            Files.createSymbolicLink(linkPath, project.getProjectLocation());
         } catch (IOException e) {
             logger.error("Failed to link project.", e);
             throw new ServiceException("Failed to link project.", e);
