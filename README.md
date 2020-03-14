@@ -103,7 +103,7 @@ Done syncing.
 The directory tree should now look like this:
 ```bash
 .
-├── protop
+├── .protop
 │   └── path
 │       └── org_a
 │           └── project_a -> ~/.protop/cache/other_org/other_project/1.2.1
@@ -145,7 +145,7 @@ sourceSets {
     main {
         // ...
         proto {
-            srcDir "protop/deps"
+            srcDir ".protop/path"
         }
     }
 }
@@ -155,7 +155,7 @@ sourceSets {
 With dependencies already synced, you can call `protoc` in a project that looks like the one above:
 
 ```bash
-protoc --proto_path=protop/path \
+protoc --proto_path=.protop/path \
        --java_out=out \
        AwesomeProto.proto
 ```
