@@ -12,7 +12,7 @@ description = "Protop CLI"
 
 allprojects {
     group = "io.protop"
-    version = "0.2.0"
+    version = "0.3.0"
 
     apply plugin: "java"
 
