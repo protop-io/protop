@@ -1,67 +1,9 @@
-plugins {
-    id "application"
-}
-
 dependencies {
-    implementation project(path: ":protop-core", configuration: "core")
-    
+    implementation project(":protop-core")
+
     implementation "info.picocli:picocli:4.0.2"
     implementation "info.picocli:picocli-shell-jline3:4.0.3"
     implementation "org.jline:jline:3.12.1"
 
-    // annotations
     annotationProcessor "info.picocli:picocli-codegen:4.0.2"
 }
-
-compileJava {
-    options.compilerArgs += ["-Aproject=${project.group}/${project.name}"]
-}
-
-jar {
-    archivesBaseName = "protop-cli"
-}
-
-task distFatJar(type: Jar) {
-    archiveFileName = "protop-cli.jar"
-
-    manifest {
-        attributes (
-                'Protop-Version' : project.version,
-                'Built-By'       : System.properties['user.name'],
-                'Build-Timestamp': new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()),
-                'Created-By'     : "Gradle ${gradle.gradleVersion}",
-                'Build-Jdk'      : "${System.properties['java.version']}",
-                "Main-Class"     : "io.protop.cli.ProtopCli"
-        )
-    }
-
-    from sourceSets.main.output
-    from configurations.runtimeClasspath.
-            findAll { it.name.endsWith('jar') }.
-            collect { zipTree(it) }
-}
-
-plugins.withType(DistributionPlugin) {
-    distZip {
-        enabled = false
-    }
-    distTar {
-        compression = Compression.GZIP
-        setExtension("tar.gz")
-        
-        if (!project.hasProperty("dev")) {
-            include("protop-cli.jar")
-            include("MANIFEST.MF")
-        }
-    }
-}
-
-distributions {
-    main {
-        contents {
-            from distFatJar
-        }
-    }
-}
-
-mainClassName = "io.protop.cli.ProtopCli"

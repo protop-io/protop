@@ -1,5 +1,6 @@
 plugins {
-    id "java"
+//    id "java"
+    id "application"
 }
 
 ext {
@@ -7,25 +8,27 @@ ext {
     lombokVersion = "1.18.10"
 }
 
-description = ''
+description = "Protop CLI"
 
 allprojects {
     group = "io.protop"
     version = "0.2.0"
+
+    apply plugin: "java"
+
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
 }
 
 subprojects {
-    apply plugin: "java"
-    apply plugin: "java-library"
-    apply plugin: "maven-publish"
-
     dependencies {
         implementation "com.google.guava:guava:27.0.1-jre"
         implementation "com.fasterxml.jackson.core:jackson-databind:2.9.9.3"
         implementation "com.fasterxml.jackson.core:jackson-annotations:2.9.9"
         implementation "javax.validation:validation-api:2.0.1.Final"
         implementation "commons-io:commons-io:2.6"
-        implementation "org.apache.commons:commons-compress:1.19"
         implementation "org.slf4j:slf4j-api:$slf4jVersion"
         implementation "org.slf4j:slf4j-jdk14:$slf4jVersion"
         implementation "io.reactivex.rxjava2:rxjava:2.2.17"
@@ -37,18 +40,57 @@ subprojects {
         testImplementation "junit:junit:4.12"
     }
 
-    repositories {
-        mavenLocal()
-        mavenCentral()
-    }
-
-    publishing {
-        publications {
-            jarModule(MavenPublication) {
-                from components.java
-            }
-        }
-    }
-
     tasks.withType(org.gradle.api.tasks.javadoc.Javadoc).all { enabled = false }
 }
+
+dependencies {
+    implementation project(":protop-cli")
+}
+
+def DIST_NAME = "protop-v${project.version}"
+def DIST_JAR_NAME = "${DIST_NAME}.jar"
+def MANIFEST_NAME = "MANIFEST.MF"
+
+task distFatJar(type: Jar) {
+    archiveFileName = DIST_JAR_NAME
+
+    manifest {
+        attributes (
+                'Protop-Version' : project.version,
+                'Built-By'       : System.properties['user.name'],
+                'Build-Timestamp': new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()),
+                'Created-By'     : "Gradle ${gradle.gradleVersion}",
+                'Build-Jdk'      : "${System.properties['java.version']}",
+                "Main-Class"     : "io.protop.cli.ProtopCli"
+        )
+    }
+
+    from sourceSets.main.output
+    from configurations.runtimeClasspath.
+            findAll { it.name.endsWith('jar') }.
+            collect { zipTree(it) }
+}
+
+plugins.withType(DistributionPlugin) {
+    distZip {
+        archiveFileName = "${DIST_NAME}.zip"
+        include(DIST_JAR_NAME)
+        include(MANIFEST_NAME)
+    }
+    distTar {
+        compression = Compression.GZIP
+        archiveFileName = "${DIST_NAME}.tgz"
+        include(DIST_JAR_NAME)
+        include(MANIFEST_NAME)
+    }
+}
+
+distributions {
+    main {
+        contents {
+            from distFatJar
+        }
+    }
+}
+
+mainClassName = "io.protop.cli.ProtopCli"

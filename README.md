@@ -4,13 +4,11 @@
 
 # protop
 
-protop is an open source protocol buffer package manager inspired by--and heavily modeled after--NPM. It is mainly motivated by the total lack of consistency in how protobufs are currently shared. For public APIs to embrace gRPC, or for an organization to develop with protobufs without a complex monorepo solution, a simple package manager is the obvious solution.
+protop is an open source protocol buffer package manager. It is mainly motivated by the lack of consistency in how protobufs are currently shared. For public APIs to embrace gRPC, or for an organization to develop with protobufs without a complex monorepo solution, a simple package manager is the obvious solution.
 
 This tool works well for local projects as well as projects with external dependencies. For distributing projects, there is an implementation of a Nexus repository plugin being developed [here](https://github.com/protop-io/nexus-repository-protop), currently in a functional beta state as well.
 
-Protop is welcome to contributions; if you are interested in the technology, please reach out here are to the maintainer at jeffery@protop.io.
-
-_WARNING: This project is super fresh and relatively untested in the wild. If you have any thoughts about improvements or issues, please report them / let's chat!_
+Protop is welcome to contributions; if you are interested in the technology, please reach out here are to the maintainer at jeffery@protop.io. If you have any thoughts about improvements/features or issues, let's chat!
 
 ## Install
 
@@ -91,9 +89,11 @@ The directory tree should now look like this:
 ```
 Protop creates symbolic links to projects in a system-wide cache where all dependencies are stored whether they were `protop link`ed or retrieved from an external repository.
 
+### Use with Gradle
+Documentation coming soon.
+
 ### Use with protoc
 With dependencies synced, you can call `protoc` in a project that looks like the one above:
-
 
 ```bash
 protoc --proto_path=protop/path \
@@ -101,12 +101,12 @@ protoc --proto_path=protop/path \
        AwesomeProto.proto
 ```
 
-### Publish to a repository
+### Publish to a repository*
 ```bash
 $ protop publish -r=https://repository.example.com
 ```
 
-There is an implementation of a Nexus plugin for protop required for this to work. More details [here](https://github.com/protop-io/nexus-repository-protop). Coming soon, there will be better documentation on the API of the repository itself.
+*There is an implementation of a Nexus plugin for protop required for this to work. More details [here](https://github.com/protop-io/nexus-repository-protop). Coming soon, there will be better documentation on the API of the repository itself.
 
 ### `.protoprc` configuration
 
