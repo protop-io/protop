@@ -26,8 +26,8 @@ tmp=$dir/tmp
 protop_say "Moving build artifacts to temporary directory"
 mkdir -p $tmp
 rm -rf $tmp/*
-dist=$tmp/dist.tar.gz
-cp ./protop-cli/build/distributions/*.tar.gz $dist
+dist=$tmp/dist.tgz
+cp ./build/distributions/*.tgz $dist
 cd $tmp
 
 # unpack
@@ -42,8 +42,6 @@ mkdir $dir/lib
 
 protop_say "Moving binaries to their new home"
 mv $tmp/*/bin/* $dir/bin/
-mv $dir/bin/protop-cli $dir/bin/protop
-mv $dir/bin/protop-cli.bat $dir/bin/protop.bat
 
 # and jars
 mv $tmp/*/lib/* $dir/lib/
