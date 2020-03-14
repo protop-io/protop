@@ -66,7 +66,31 @@ This will generate a manifest file named `protop.json`.
 }
 ```
 
-### Sync dependencies
+## Publish ("link") locally
+This will make the project accessible to all other projects that run `sync` with links enabled.
+```bash
+$ protop link
+```
+
+To unlink a project, in the project directory:
+```bash
+$ protop unlink
+```
+
+To unlink all projects system-wide:
+```bash
+$ protop links clean
+```
+
+### Publish to a repository*
+```bash
+$ protop publish -r=https://repository.example.com
+```
+
+*There is an implementation of a Nexus plugin for protop required for this to work. More details [here](https://github.com/protop-io/nexus-repository-protop). Coming soon, there will be better documentation on the API of the repository itself.
+
+### Sync local/external dependencies
+Run the following with `-l` or `--use-links` to include local/linked dependencies, or run without it to only include dependencies from the network.
 ```bash
 $ protop sync --use-links
 ```
@@ -87,13 +111,48 @@ The directory tree should now look like this:
 ├── AwesomeProto.proto
 └── out
 ```
-Protop creates symbolic links to projects in a system-wide cache where all dependencies are stored whether they were `protop link`ed or retrieved from an external repository.
+As you can see, protop creates symbolic links to projects in a system-wide cache where all dependencies are stored whether they were `protop link`ed or retrieved from an external repository.
+
+To clean the system-wide cache (not generally recommended/necessary):
+```bash
+$ protop cache clean
+```
+
+## Use with Gradle or other build tools
 
 ### Use with Gradle
-Documentation coming soon.
+There isn't a custom Gradle plugin for protop (yet). Even so, the implementation is quite simple. Assuming you have an existing `build.gradle` setup for a protobuf project, add the following task to the root project:
+```groovy
+task protop(type: Exec) {
+    workingDir "."
+    commandLine "protop", "sync"
+}
+```
+This task will simply run `protop sync`. To invoke it upon `gradle build` and ensure that it is run before the protos are generated, alter the `protobuf` block (or add it now):
+```groovy
+protobuf {
+    // ...
+    generateProtoTasks {
+        // ...
+        all().each { task -> task.dependsOn protop }
+    }
+}
+```
 
-### Use with protoc
-With dependencies synced, you can call `protoc` in a project that looks like the one above:
+Finally, make sure the compiler will find all the synced protos:
+```groovy
+sourceSets {
+    main {
+        // ...
+        proto {
+            srcDir "protop/deps"
+        }
+    }
+}
+```
+
+### Use with protoc directly
+With dependencies already synced, you can call `protoc` in a project that looks like the one above:
 
 ```bash
 protoc --proto_path=protop/path \
@@ -101,14 +160,10 @@ protoc --proto_path=protop/path \
        AwesomeProto.proto
 ```
 
-### Publish to a repository*
-```bash
-$ protop publish -r=https://repository.example.com
-```
+### Use with other build tools
+Please let us know other tools you'd like to see an integration with besides the ones above. If you have an examples you'd like to add or have issues with the examples here, please open an issue or submit a PR.
 
-*There is an implementation of a Nexus plugin for protop required for this to work. More details [here](https://github.com/protop-io/nexus-repository-protop). Coming soon, there will be better documentation on the API of the repository itself.
-
-### `.protoprc` configuration
+## `.protoprc` configuration
 
 Create a `.protoprc` file in the project directory to configure options that generally won't change, such as the repository URI. For example:
 ```properties
@@ -124,7 +179,6 @@ Currently, the following properties are recognized:
 
 There are a few technical debts that need to be resolved before any big features will be added (mostly better tests), but here are a few of the bigger items on the roadmap:
 
-- Install via Homebrew (and others?)
 - Production repository - At least initially, this will be implemented using the Nexus Repository Manager using the protop plugin.
 - Interface for joining the repository and creating organizations (probably somewhere at _something.protop.io_)
 - Full documentation at [protop.io](http://protop.io)
