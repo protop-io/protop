@@ -64,7 +64,7 @@ public class Storage {
         // CredentialStore storage.
         SESSION_STORE(".auth"),
 
-        // Temporary storage for publication tarball.
+        // Temporary storage for publication tarballs etc.
         TEMP_PUBLICATION_CACHE(".tmp"),
 
         // Sym links to `link`ed projects.
@@ -80,9 +80,10 @@ public class Storage {
     @AllArgsConstructor
     public enum ProjectDirectory {
 
-        PROTOP("protop"),
+        PROTOP(".protop"),
 
-        DEPS("deps");
+        // Is actually nested under .protop
+        DEPS("path");
 
         private final String name;
     }
