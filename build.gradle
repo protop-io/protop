@@ -12,7 +12,7 @@ description = "Protop CLI"
 
 allprojects {
     group = "io.protop"
-    version = "0.3.0"
+    version = "0.4.0"
 
     apply plugin: "java"
 
@@ -47,8 +47,8 @@ dependencies {
     implementation project(":protop-cli")
 }
 
-def DIST_NAME = "protop-v${project.version}"
-def DIST_JAR_NAME = "${DIST_NAME}.jar"
+def DIST_NAME = "protop-${project.version}"
+def DIST_JAR_NAME = "protop.jar"
 def MANIFEST_NAME = "MANIFEST.MF"
 
 task distFatJar(type: Jar) {
