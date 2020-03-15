@@ -3,6 +3,7 @@ package io.protop.utils;
 import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.core.version.Version;
 
+import javax.validation.constraints.NotNull;
 import java.net.URI;
 import java.net.URISyntaxException;
 
@@ -20,7 +21,7 @@ public class RegistryUtils {
                 + ".tar.gz";
     }
 
-    public static URI createTarballUri(URI registryUri, ProjectCoordinate coordinate, Version version)
+    public static URI createTarballUri(@NotNull URI registryUri, ProjectCoordinate coordinate, Version version)
             throws URISyntaxException {
         return UriUtils.appendPathSegments(
                 registryUri,
@@ -30,7 +31,7 @@ public class RegistryUtils {
                 RegistryUtils.createTarballName(coordinate, version));
     }
 
-    public static URI createManifestUri(URI registryUri, ProjectCoordinate coordinate) throws URISyntaxException {
+    public static URI createManifestUri(@NotNull URI registryUri, ProjectCoordinate coordinate) throws URISyntaxException {
         return UriUtils.appendPathSegments(
                 registryUri,
                 coordinate.getOrganizationId(),

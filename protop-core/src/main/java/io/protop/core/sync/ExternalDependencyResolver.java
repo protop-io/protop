@@ -7,6 +7,7 @@ import io.protop.core.auth.AuthService;
 import io.protop.core.cache.CacheService;
 import io.protop.core.cache.CachedProjectsMap;
 import io.protop.core.error.PackageNotFound;
+import io.protop.core.error.ServiceError;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.manifest.AggregatedManifest;
@@ -25,6 +26,8 @@ import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.util.EntityUtils;
 
+import javax.annotation.Nullable;
+import java.io.IOException;
 import java.net.URI;
 import java.nio.file.Path;
 import java.util.*;
@@ -50,45 +53,55 @@ public class ExternalDependencyResolver implements DependencyResolver {
     @Override
     public Single<Map<ProjectCoordinate, Version>> resolve(
             Path dependencyDir, Map<ProjectCoordinate, Version> projectDependencies) {
+
         return Single.create(emitter -> {
-            Map<ProjectCoordinate, Map<Version, Path>> cachedProjects = loadCachedProjects();
-            Map<ProjectCoordinate, Version> aggregatedDependencies = aggregateDependencies(
-                    projectDependencies, extractManifestsFromCache(cachedProjects));
-
-            logger.info("Aggregated dependencies: " + new ObjectMapper().writeValueAsString(aggregatedDependencies));
-
-            Set<ProjectCoordinate> resolved = new HashSet<>();
-            aggregatedDependencies.forEach((coordinate, version) -> {
-                Map<Version, Path> cachedVersions = cachedProjects.computeIfAbsent(
-                        coordinate, coord -> new HashMap<>());
-
-                AtomicReference<Path> path = new AtomicReference<>();
-                if (cachedVersions.containsKey(version)) {
-                    path.set(cachedVersions.get(version));
+            try {
+                if (Optional.ofNullable(getRegistryUri()).isEmpty()) {
+                    logger.info("Skipping external dependencies since registry URI is null.");
+                    emitter.onSuccess(projectDependencies);
                 } else {
-                    logger.info("Not found; attempting to retrieve from registry.");
-                    try {
-                        Path cached = retrieveAndCache(coordinate, version).blockingGet();
-                        path.set(cached);
-                    } catch (Throwable t) {
-                        // TODO something else?
-                    }
-                }
+                    Map<ProjectCoordinate, Map<Version, Path>> cachedProjects = loadCachedProjects();
+                    Map<ProjectCoordinate, Version> aggregatedDependencies = aggregateDependencies(
+                            projectDependencies, extractManifestsFromCache(cachedProjects));
 
-                Path sourceDir = path.get();
-                if (Objects.nonNull(sourceDir)) {
-                    try {
-                        SyncUtils.createSymbolicLink(dependencyDir, coordinate, sourceDir);
-                        resolved.add(coordinate);
-                    } catch (Exception e) {
-                        // TODO handle better
-                        throw new ServiceException("Unexpectedly failed to resolve external dependencies.", e);
-                    }
-                }
-            });
+                    logger.info("Aggregated dependencies: " + new ObjectMapper().writeValueAsString(aggregatedDependencies));
 
-            resolved.forEach(aggregatedDependencies::remove);
-            emitter.onSuccess(aggregatedDependencies);
+                    Set<ProjectCoordinate> resolved = new HashSet<>();
+                    aggregatedDependencies.forEach((coordinate, version) -> {
+                        Map<Version, Path> cachedVersions = cachedProjects.computeIfAbsent(
+                                coordinate, coord -> new HashMap<>());
+
+                        AtomicReference<Path> path = new AtomicReference<>();
+                        if (cachedVersions.containsKey(version)) {
+                            path.set(cachedVersions.get(version));
+                        } else {
+                            logger.info("Not found; attempting to retrieve from registry.");
+                            try {
+                                Path cached = retrieveAndCache(coordinate, version).blockingGet();
+                                path.set(cached);
+                            } catch (Throwable t) {
+                                emitter.onError(t);
+                            }
+                        }
+
+                        Path sourceDir = path.get();
+                        if (Objects.nonNull(sourceDir)) {
+                            try {
+                                SyncUtils.createSymbolicLink(dependencyDir, coordinate, sourceDir);
+                                resolved.add(coordinate);
+                            } catch (Exception e) {
+                                // TODO handle better
+                                throw new ServiceException("Unexpectedly failed to resolve external dependencies.", e);
+                            }
+                        }
+                    });
+
+                    resolved.forEach(aggregatedDependencies::remove);
+                    emitter.onSuccess(aggregatedDependencies);
+                }
+            } catch (Throwable t) {
+                emitter.onError(t);
+            }
         });
     }
 
@@ -178,26 +191,30 @@ public class ExternalDependencyResolver implements DependencyResolver {
 
     private Single<AggregatedManifest> retrieveAggregatedManifest(ProjectCoordinate coordinate) {
         return Single.create(emitter -> {
-            URI uri = RegistryUtils.createManifestUri(getRegistryUri(), coordinate);
-            HttpResponse response = createHttpClient()
-                    .execute(new HttpGet(uri));
+            try {
+                URI uri = RegistryUtils.createManifestUri(getRegistryUri(), coordinate);
+                HttpResponse response = createHttpClient()
+                        .execute(new HttpGet(uri));
 
-            int statusCode = response.getStatusLine().getStatusCode();
-            if (statusCode != HttpStatus.SC_OK) {
-                String message = String.format("Did not find project in registry: %s.", coordinate);
-                logger.error(message);
-                emitter.onError(new ServiceException(message));
-            } else {
-                try {
-                    ObjectMapper objectMapper = Environment.getInstance().getObjectMapper();
-                    String stringEntity = EntityUtils.toString(response.getEntity());
-                    AggregatedManifest aggregatedManifest = objectMapper.readValue(
-                            stringEntity, AggregatedManifest.class);
-                    emitter.onSuccess(aggregatedManifest);
-                } catch (Exception e) {
-                    logger.error("Failed to parse manifest for " + coordinate, e);
-                    emitter.onError(new ServiceException("Failed to parse manifest for " + coordinate));
+                int statusCode = response.getStatusLine().getStatusCode();
+                if (statusCode != HttpStatus.SC_OK) {
+                    String message = String.format("Did not find project in registry: %s.", coordinate);
+                    logger.error(message);
+                    emitter.onError(new ServiceException(message));
+                } else {
+                    try {
+                        ObjectMapper objectMapper = Environment.getInstance().getObjectMapper();
+                        String stringEntity = EntityUtils.toString(response.getEntity());
+                        AggregatedManifest aggregatedManifest = objectMapper.readValue(
+                                stringEntity, AggregatedManifest.class);
+                        emitter.onSuccess(aggregatedManifest);
+                    } catch (Exception e) {
+                        logger.error("Failed to parse manifest for " + coordinate, e);
+                        emitter.onError(new ServiceException("Failed to parse manifest for " + coordinate));
+                    }
                 }
+            } catch (Throwable t) {
+                emitter.onError(t);
             }
         });
     }
@@ -206,31 +223,37 @@ public class ExternalDependencyResolver implements DependencyResolver {
     //  a reference of the cache used for all resolved dependencies
     private Maybe<Path> retrieveAndCache(ProjectCoordinate coordinate, Version version) {
         return Maybe.create(emitter -> {
-            // TODO handle uri composition more cleanly
-            URI uri = RegistryUtils.createTarballUri(
-                    getRegistryUri(),
-                    coordinate,
-                    version);
-            HttpResponse response = createHttpClient()
-                    .execute(new HttpGet(uri));
+            try {
+                URI uri = RegistryUtils.createTarballUri(
+                        getRegistryUri(),
+                        coordinate,
+                        version);
+                HttpResponse response = createHttpClient()
+                        .execute(new HttpGet(uri));
 
-            int statusCode = response.getStatusLine().getStatusCode();
-            if (statusCode != HttpStatus.SC_OK) {
-                logger.error("Failed to retrieve package. URI: {}. Status code: {}.",
-                        uri,
-                        statusCode);
-                // TODO handle better, i.e. map to a specific exception based on the response/code from the registry.
-                emitter.onComplete();
-            } else {
-                Path path = cacheService.cache(coordinate, version, response.getEntity().getContent())
-                        .blockingGet();
+                int statusCode = response.getStatusLine().getStatusCode();
+                if (statusCode != HttpStatus.SC_OK) {
+                    logger.error("Failed to retrieve package. URI: {}. Status code: {}.",
+                            uri,
+                            statusCode);
+                    // TODO handle better, i.e. map to a specific exception based on the response/code from the registry.
+                    emitter.onComplete();
+                } else {
+                    Path path = cacheService.cache(coordinate, version, response.getEntity().getContent())
+                            .blockingGet();
 
-                logger.info("Happy path achieved.");
-                emitter.onSuccess(path);
+                    logger.info("Happy path achieved.");
+                    emitter.onSuccess(path);
+                }
+            } catch (IOException ioe) {
+                throw new ServiceException(ServiceError.CONNECTION_FAILED, ioe);
+            } catch (Throwable t) {
+                emitter.onError(t);
             }
         });
     }
 
+    @Nullable
     private URI getRegistryUri() {
         return context.getRc().getRepositoryUri();
     }

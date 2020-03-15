@@ -47,7 +47,7 @@ public class UriUtils {
     /**
      * Creates a new URI, adding the new segments to the original URI.
      */
-    public static URI appendPathSegments(URI original, String... segments) throws URISyntaxException {
+    public static URI appendPathSegments(@NotNull URI original, String... segments) throws URISyntaxException {
         String originalPath = removeTrailingSlash(original.getPath());
         String fullPath = segments.length > 0
                 ? originalPath + "/" + String.join("/", segments)

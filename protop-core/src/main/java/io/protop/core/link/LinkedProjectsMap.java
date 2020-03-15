@@ -1,6 +1,7 @@
 package io.protop.core.link;
 
 import io.protop.core.error.ServiceException;
+import io.protop.core.logs.Logger;
 import io.protop.core.manifest.ProjectCoordinate;
 import io.protop.core.storage.Storage;
 import io.reactivex.Single;
@@ -21,6 +22,8 @@ import java.util.Map;
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class LinkedProjectsMap {
+
+    private static final Logger logger = Logger.getLogger(LinkedProjectsMap.class);
 
     private final Map<ProjectCoordinate, Path> projects;
 

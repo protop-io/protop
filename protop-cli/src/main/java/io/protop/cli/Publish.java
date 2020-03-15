@@ -1,10 +1,10 @@
 package io.protop.cli;
 
+import io.protop.cli.errors.ExceptionHandler;
 import io.protop.core.Context;
 import io.protop.core.RuntimeConfiguration;
 import io.protop.core.auth.AuthService;
 import io.protop.core.auth.BasicAuthService;
-import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
 import io.protop.core.publish.ProjectPublisher;
@@ -43,40 +43,26 @@ public class Publish implements Runnable {
 
     @Override
     public void run() {
-
         Logs.enableIf(protop.isDebugMode());
+        new ExceptionHandler().run(() -> {
+            RuntimeConfiguration cliRc = RuntimeConfiguration.builder()
+                    .repositoryUri(Optional.ofNullable(registry)
+                            .map(UriUtils::fromString)
+                            .orElse(null))
+                    .build();
+            Context context = Context.from(location, cliRc);
+            StorageService storageService = new StorageService();
+            AuthService authService = new BasicAuthService(storageService);
+            ProjectPublisher projectPublisher = new ProjectPublisherImpl(context, authService);
 
-        RuntimeConfiguration cliRc = RuntimeConfiguration.builder()
-                .repositoryUri(Optional.ofNullable(registry)
-                        .map(UriUtils::fromString)
-                        .orElse(null))
-                .build();
-        Context context = Context.from(location, cliRc);
-        StorageService storageService = new StorageService();
-        AuthService authService = new BasicAuthService(storageService);
-        ProjectPublisher projectPublisher = new ProjectPublisherImpl(context, authService);
+            PublishableProject project = PublishableProject.from(location);
 
-        PublishableProject project = PublishableProject.from(location);
-
-        projectPublisher.publish(project)
-                .subscribe(this::handleSuccess, this::handleError)
-                .dispose();
+            projectPublisher.publish(project).blockingAwait();
+            handleSuccess();
+        });
     }
 
     private void handleSuccess() {
-        // TODO better message
         logger.always("Published!");
-    }
-
-    private void handleError(Throwable t) {
-        if (t instanceof ServiceException) {
-            String message = String.format("Failed to publish: %s. Retry with -d for more details.", t.getMessage());
-            logger.always(message);
-        } else {
-            if (!protop.isDebugMode()) {
-                logger.always("Something unexpected happened. Retry with -d for more details.");
-            }
-            logger.error(t.getMessage(), t);
-        }
     }
 }

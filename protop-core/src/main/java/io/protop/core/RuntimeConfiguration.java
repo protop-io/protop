@@ -1,5 +1,6 @@
 package io.protop.core;
 
+import com.google.common.base.Strings;
 import io.protop.core.error.ServiceError;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
@@ -8,6 +9,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
+import javax.annotation.Nullable;
 import javax.validation.constraints.NotNull;
 import java.io.File;
 import java.io.FileInputStream;
@@ -30,8 +32,13 @@ public class RuntimeConfiguration {
 
     private static final String PROTOP_RC = ".protoprc";
 
+    @Nullable
     private final URI repositoryUri;
+
+    @Nullable
     private final URI publishRepositoryUri;
+
+    @Nullable
     private final URI syncRepositoryUri;
 
     public static RuntimeConfiguration empty() {
@@ -72,6 +79,8 @@ public class RuntimeConfiguration {
             throw new InvalidParameterException("Cannot be null");
         }
 
+        logger.info("repositories: {}, {}.", getRepositoryUri(), other.getRepositoryUri());
+        logger.info("resolved: {}.", resolveAsap(getRepositoryUri(), other.getRepositoryUri()));
         return RuntimeConfiguration.builder()
                 .repositoryUri(resolveAsap(getRepositoryUri(), other.getRepositoryUri()))
                 .publishRepositoryUri(resolveAsap(getPublishRepositoryUri(), other.getPublishRepositoryUri()))
@@ -80,6 +89,10 @@ public class RuntimeConfiguration {
     }
 
     private <T> T resolveAsap(T a, T b) {
-        return Objects.nonNull(a) ? a : b;
+        if (a instanceof String) {
+            return !Strings.isNullOrEmpty((String) a) ? a : b;
+        } else {
+            return Objects.nonNull(a) ? a : b;
+        }
     }
 }

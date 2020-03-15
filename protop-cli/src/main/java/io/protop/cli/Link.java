@@ -1,9 +1,11 @@
 package io.protop.cli;
 
+import io.protop.cli.errors.ExceptionHandler;
 import io.protop.core.link.LinkService;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
 import io.protop.core.publish.PublishableProject;
+import picocli.CommandLine;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.ParentCommand;
 
@@ -18,12 +20,16 @@ public class Link implements Runnable {
     @ParentCommand
     private ProtopCli protop;
 
+    @CommandLine.Parameters(arity = "0..1",
+            description = "Root directory of project",
+            defaultValue = ".")
+    private Path directory;
+
     @Override
     public void run() {
         Logs.enableIf(protop.isDebugMode());
-
-        Path location = Path.of(".");
-
-        new LinkService().link(PublishableProject.from(location));
+        new ExceptionHandler().run(() -> {
+            new LinkService().link(PublishableProject.from(directory.toAbsolutePath()));
+        });
     }
 }

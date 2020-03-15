@@ -32,6 +32,7 @@ public class LinkedDependencyResolver implements DependencyResolver {
             Set<ProjectCoordinate> resolved = new HashSet<>();
 
             unresolvedDependencies.forEach((name, version) -> {
+                logger.info("Resolvable links: {}.", resolvable.getProjects());
                 if (resolvable.getProjects().containsKey(name)) {
                     try {
                         SyncUtils.createSymbolicLink(dependencyDir, name, resolvable.getProjects().get(name));
