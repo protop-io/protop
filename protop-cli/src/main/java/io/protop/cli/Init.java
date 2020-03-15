@@ -2,6 +2,7 @@ package io.protop.cli;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
+import io.protop.cli.errors.ExceptionHandler;
 import io.protop.core.ProjectCreator;
 import io.protop.core.ProjectCreatorImpl;
 import io.protop.core.error.ServiceException;
@@ -41,21 +42,22 @@ public class Init implements Runnable {
     @Override
     public void run() {
         Logs.enableIf(protop.isDebugMode());
+        new ExceptionHandler().run(() -> {
+            logger.info("Creating a new project.");
 
-        logger.info("Creating a new project.");
+            LineReader reader = LineReaderBuilder.builder()
+                    .parser(new DefaultParser())
+                    .build();
 
-        LineReader reader = LineReaderBuilder.builder()
-                .parser(new DefaultParser())
-                .build();
+            Manifest manifest = Manifest.builder()
+                    .organization(getOrganization(reader))
+                    .name(getName(reader))
+                    .version(getVersion(reader))
+                    .include(getPathsToInclude(reader))
+                    .build();
 
-        Manifest manifest = Manifest.builder()
-                .organization(getOrganization(reader))
-                .name(getName(reader))
-                .version(getVersion(reader))
-                .include(getPathsToInclude(reader))
-                .build();
-
-        createProject(manifest, directory);
+            createProject(manifest, directory.toAbsolutePath());
+        });
     }
 
     private void createProject(Manifest manifest, Path directory) {

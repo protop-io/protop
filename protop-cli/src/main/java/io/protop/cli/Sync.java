@@ -1,5 +1,6 @@
 package io.protop.cli;
 
+import io.protop.cli.errors.ExceptionHandler;
 import io.protop.core.Context;
 import io.protop.core.RuntimeConfiguration;
 import io.protop.core.auth.AuthService;
@@ -8,7 +9,6 @@ import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
 import io.protop.core.storage.StorageService;
 import io.protop.core.sync.DependencyResolutionConfiguration;
-import io.protop.core.sync.IncompleteSync;
 import io.protop.core.sync.SyncService;
 import io.protop.core.sync.status.SyncStatus;
 import io.protop.utils.UriUtils;
@@ -44,41 +44,32 @@ public class Sync implements Runnable {
     @Override
     public void run() {
         Logs.enableIf(protop.isDebugMode());
+        new ExceptionHandler().run(() -> {
+            Path location = Path.of(".").toAbsolutePath();
 
-        Path location = Path.of(".");
+            RuntimeConfiguration cliRc = RuntimeConfiguration.builder()
+                    .repositoryUri(Optional.ofNullable(registry)
+                            .map(UriUtils::fromString)
+                            .orElse(null))
+                    .build();
+            Context context = Context.from(location, cliRc);
 
-        RuntimeConfiguration cliRc = RuntimeConfiguration.builder()
-                .repositoryUri(Optional.ofNullable(registry)
-                        .map(UriUtils::fromString)
-                        .orElse(null))
-                .build();
-        Context context = Context.from(location, cliRc);
+            StorageService storageService = new StorageService();
+            AuthService<?> authService = new BasicAuthService(storageService);
+            DependencyResolutionConfiguration resolutionContext = DependencyResolutionConfiguration.builder()
+                    .includesLinkedDependencies(includeLinkedDependencies)
+                    .build();
+            SyncService syncService = new SyncService(authService, storageService, context);
 
-        StorageService storageService = new StorageService();
-        AuthService<?> authService = new BasicAuthService(storageService);
-        DependencyResolutionConfiguration resolutionContext = DependencyResolutionConfiguration.builder()
-                .includesLinkedDependencies(includeLinkedDependencies)
-                .build();
-        SyncService syncService = new SyncService(authService, storageService, context);
-
-        syncService.sync(resolutionContext)
-                .subscribe(this::handleNextStatus, this::handleError, this::handleSuccess)
-                .dispose();
+            syncService.sync(resolutionContext)
+                    .doOnComplete(this::handleSuccess)
+                    .doOnNext(this::handleNextStatus)
+                    .blockingSubscribe();
+        });
     }
 
     private void handleNextStatus(SyncStatus status) {
         logger.always(status.getMessage());
-    }
-
-    private void handleError(Throwable error) {
-        logger.always("Failed to resolve some dependencies.");
-
-        if (error instanceof IncompleteSync) {
-            ((IncompleteSync) error).getUnresolvedDependencies().forEach((dependencyName, version) ->
-                        logger.always(String.format("  - (unresolved) %s %s", dependencyName, version.toString())));
-        } else {
-            logger.error("An unexpected error occurred.", error);
-        }
     }
 
     private void handleSuccess() {

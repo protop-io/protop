@@ -20,20 +20,6 @@ public class Logger implements ILogger {
     }
 
     @Override
-    public void debug(String message) {
-        if (Logs.areEnabled()) {
-            logger.debug(message);
-        }
-    }
-
-    @Override
-    public void debug(String format, Object... args) {
-        if (Logs.areEnabled()) {
-            logger.debug(format, args);
-        }
-    }
-
-    @Override
     public void info(String message) {
         if (Logs.areEnabled()) {
             logger.info(message);

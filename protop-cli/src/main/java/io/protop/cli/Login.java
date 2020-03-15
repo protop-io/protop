@@ -1,6 +1,7 @@
 package io.protop.cli;
 
 import com.google.common.base.Strings;
+import io.protop.cli.errors.ExceptionHandler;
 import io.protop.core.Environment;
 import io.protop.core.auth.AuthService;
 import io.protop.core.auth.BasicAuthService;
@@ -54,35 +55,37 @@ public class Login implements Runnable {
     @Override
     public void run() {
         Logs.enableIf(protop.isDebugMode());
+        new ExceptionHandler().run(() -> {
+            LineReader reader = LineReaderBuilder.builder()
+                    .parser(new DefaultParser())
+                    .build();
 
-        LineReader reader = LineReaderBuilder.builder()
-                .parser(new DefaultParser())
-                .build();
+            URI registryUri = Strings.isNullOrEmpty(registry)
+                    ? Environment.UNIVERSAL_DEFAULT_REGISTRY
+                    : UriUtils.fromString(registry);
 
-        URI registryUri = Strings.isNullOrEmpty(registry)
-                ? Environment.UNIVERSAL_DEFAULT_REGISTRY
-                : UriUtils.fromString(registry);
+            if (Strings.isNullOrEmpty(username)) {
+                username = promptUsername(reader);
+            }
 
-        if (Strings.isNullOrEmpty(username)) {
-            username = promptUsername(reader);
-        }
+            if (Strings.isNullOrEmpty(password)) {
+                password = promptPassword(reader);
+            }
 
-        if (Strings.isNullOrEmpty(password)) {
-            password = promptPassword(reader);
-        }
+            BasicCredentials basicCredentials = BasicCredentials.builder()
+                    .registry(registryUri)
+                    .username(username)
+                    .password(password)
+                    .build();
 
-        BasicCredentials basicCredentials = BasicCredentials.builder()
-                .registry(registryUri)
-                .username(username)
-                .password(password)
-                .build();
+            StorageService storageService = new StorageService();
+            AuthService<BasicCredentials> authService = new BasicAuthService(storageService);
 
-        StorageService storageService = new StorageService();
-        AuthService<BasicCredentials> authService = new BasicAuthService(storageService);
+            authService.authorize(basicCredentials).blockingAwait();
 
-        authService.authorize(basicCredentials).blockingAwait();
-        // TODO better message
-        logger.always("Success!");
+            // TODO better message
+            logger.always("Success!");
+        });
     }
 
     private String promptUsername(LineReader reader) {

@@ -50,6 +50,7 @@ public class Context {
                 .orElseGet(RuntimeConfiguration::empty));
         allRcs.add(RuntimeConfiguration.from(Storage.getHomePath())
                 .orElseGet(RuntimeConfiguration::empty));
+        allRcs.add(defaultRc);
 
         return new Context(projectLocation, manifest, resolveRcs(allRcs));
     }

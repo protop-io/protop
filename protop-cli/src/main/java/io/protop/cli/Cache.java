@@ -1,5 +1,6 @@
 package io.protop.cli;
 
+import io.protop.cli.errors.ExceptionHandler;
 import io.protop.core.cache.CacheService;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
@@ -37,20 +38,21 @@ public class Cache implements Runnable {
 
         public void run() {
             Logs.enableIf(cache.protop.isDebugMode());
+            new ExceptionHandler().run(() -> {
+                LineReader reader = LineReaderBuilder.builder()
+                        .parser(new DefaultParser())
+                        .build();
 
-            LineReader reader = LineReaderBuilder.builder()
-                    .parser(new DefaultParser())
-                    .build();
-
-            if (confirm(reader)) {
-                StorageService storageService = new StorageService();
-                CacheService cacheService = new CacheService(storageService);
-                cacheService.clean()
-                        .subscribe(this::handleSuccess, this::handleError)
-                        .dispose();
-            } else {
-                logger.always("Aborted");
-            }
+                if (confirm(reader)) {
+                    StorageService storageService = new StorageService();
+                    CacheService cacheService = new CacheService(storageService);
+                    cacheService.clean()
+                            .subscribe(this::handleSuccess, this::handleError)
+                            .dispose();
+                } else {
+                    logger.always("Cancelled");
+                }
+            });
         }
 
         private void handleSuccess() {

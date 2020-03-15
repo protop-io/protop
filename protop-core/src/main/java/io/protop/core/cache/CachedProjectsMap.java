@@ -59,7 +59,7 @@ public class CachedProjectsMap {
                                 Version version = new Version(fileName);
                                 versions.put(version, versionPath);
                             } catch (InvalidVersionString e) {
-                                logger.debug("Not a valid version; skipping {}.", fileName);
+                                logger.warn("Not a valid version; skipping {}.", fileName);
                             }
                         });
                         memo.put(coordinate, versions);

@@ -9,6 +9,7 @@ public enum ServiceError {
     VERSION_ALREADY_PUBLISHED,
     AUTH_FAILED,
     PACKAGE_NOT_FOUND,
+    CONNECTION_FAILED,
 
     // 003xx - file system errors
     STORAGE_ERROR,

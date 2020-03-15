@@ -1,5 +1,6 @@
 package io.protop.cli;
 
+import io.protop.cli.errors.ExceptionHandler;
 import io.protop.core.link.LinkService;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
@@ -31,24 +32,14 @@ public class Links implements Runnable {
 
         public void run() {
             Logs.enableIf(links.protop.isDebugMode());
-
-            try {
+            new ExceptionHandler().run(() -> {
                 new LinkService().clean();
                 handleSuccess();
-            } catch (Exception e) {
-                handleError(e);
-            }
+            });
         }
 
         private void handleSuccess() {
             logger.always("Success!");
-        }
-
-        private void handleError(Throwable t) {
-            logger.error("Failed to remove all links.", t);
-            if (!Logs.areEnabled()) {
-                logger.always("Something went wrong. Try again with -d to enable debug logs.");
-            }
         }
     }
 }

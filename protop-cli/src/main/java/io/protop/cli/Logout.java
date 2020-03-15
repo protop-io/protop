@@ -1,6 +1,7 @@
 package io.protop.cli;
 
 import com.google.common.base.Strings;
+import io.protop.cli.errors.ExceptionHandler;
 import io.protop.core.auth.AuthService;
 import io.protop.core.auth.BasicAuthService;
 import io.protop.core.logs.Logger;
@@ -37,31 +38,23 @@ public class Logout implements Runnable {
     @Override
     public void run() {
         Logs.enableIf(protop.isDebugMode());
+        new ExceptionHandler().run(() -> {
+            if (Strings.isNullOrEmpty(registry)) {
+                LineReader reader = LineReaderBuilder.builder()
+                        .parser(new DefaultParser())
+                        .build();
+                URI registryUri = promptRegistry(reader);
 
-        if (Strings.isNullOrEmpty(registry)) {
-            LineReader reader = LineReaderBuilder.builder()
-                    .parser(new DefaultParser())
-                    .build();
-            URI registryUri = promptRegistry(reader);
-
-            StorageService storageService = new StorageService();
-            AuthService<?> authService = new BasicAuthService(storageService);
-            authService.forget(registryUri)
-                    .subscribe(this::handleSuccess, this::handleError)
-                    .dispose();
-        }
+                StorageService storageService = new StorageService();
+                AuthService<?> authService = new BasicAuthService(storageService);
+                authService.forget(registryUri).blockingAwait();
+                handleSuccess();
+            }
+        });
     }
 
     private void handleSuccess() {
         logger.always("Success!");
-    }
-
-    private void handleError(Throwable t) {
-        if (Logs.areEnabled()) {
-            logger.error("Something went wrong.", t);
-        } else {
-            logger.always("Something went wrong. Try again with -d for more details.");
-        }
     }
 
     private URI promptRegistry(LineReader reader) {

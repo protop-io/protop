@@ -41,7 +41,7 @@ public class LinkService {
 
     public void clean() throws IOException {
         Path linksDirectory = getLinksDirectory();
-        Files.list(linksDirectory).forEach(path -> path.toFile().deleteOnExit());
+        Files.list(linksDirectory).forEach(path -> path.toFile().delete());
     }
 
     private Path getPathToLink(ProjectCoordinate coordinate) throws IOException {
@@ -50,10 +50,7 @@ public class LinkService {
         Path orgPath = linksDirectory.resolve(coordinate.getOrganizationId());
         StorageUtils.createDirectoryIfNotExists(orgPath);
 
-        Path projectPath = orgPath.resolve(coordinate.getProjectId());
-        StorageUtils.createDirectoryIfNotExists(projectPath);
-
-        return projectPath;
+        return orgPath.resolve(coordinate.getProjectId());
     }
 
     private ProjectCoordinate getCoordinate(PublishableProject project) {
