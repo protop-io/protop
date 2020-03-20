@@ -4,13 +4,13 @@ import io.protop.core.Context;
 import io.protop.core.auth.AuthService;
 import io.protop.core.cache.CacheService;
 import io.protop.core.logs.Logger;
+import io.protop.core.manifest.Coordinate;
 import io.protop.core.manifest.DependencyMap;
-import io.protop.core.manifest.ProjectCoordinate;
+import io.protop.core.manifest.revision.RevisionSource;
 import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageService;
 import io.protop.core.sync.status.SyncStatus;
 import io.protop.core.sync.status.Syncing;
-import io.protop.core.version.Version;
 import io.reactivex.Observable;
 import org.apache.commons.io.FileUtils;
 
@@ -55,23 +55,23 @@ public class SyncService {
             }
 
             // Currently always use cached/external dependencies.
-            resolvers.add(new ExternalDependencyResolver(authService, cacheService, context));
+            resolvers.add(new ExternalDependencyResolver(authService, storageService, cacheService, context));
 
             DependencyMap dependencyMap = Optional.ofNullable(context.getManifest().getDependencies())
                     .orElseGet(DependencyMap::new);
-            AtomicReference<Map<ProjectCoordinate, Version>> unresolvedDependencies = new AtomicReference<>(
+            AtomicReference<Map<Coordinate, RevisionSource>> unresolvedDependencies = new AtomicReference<>(
                     dependencyMap.getValues());
 
             resolvers.forEach(resolver -> {
                 emitter.onNext(new Syncing(resolver.getShortDescription()));
-                Map<ProjectCoordinate, Version> next = resolver.resolve(
+                Map<Coordinate, RevisionSource> next = resolver.resolve(
                         dependenciesDir,
                         unresolvedDependencies.get())
                         .blockingGet();
                 unresolvedDependencies.set(next);
             });
 
-            Map<ProjectCoordinate, Version> ultimatelyUnresolved = unresolvedDependencies.get();
+            Map<Coordinate, RevisionSource> ultimatelyUnresolved = unresolvedDependencies.get();
             if (!ultimatelyUnresolved.isEmpty()) {
                 emitter.onError(new IncompleteSync(ultimatelyUnresolved));
             } else {

@@ -29,17 +29,25 @@ public class Sync implements Runnable {
     private ProtopCli protop;
 
     @Option(names = {"-l", "--use-links"},
+            description = "Allow dependencies to resolve to locally linked projects.",
             required = false,
             arity = "0..1",
             defaultValue = "false")
     private Boolean includeLinkedDependencies;
 
     @Option(names = {"-r", "--registry"},
-            description = "Registry",
+            description = "Registry URI",
             required = false,
             arity = "0..1",
             defaultValue = "")
     private String registry;
+
+    @Option(names = {"-g", "--git-refresh"},
+            description = "Refresh Git projects sources.",
+            required = false,
+            arity = "0..1",
+            defaultValue = "")
+    private Boolean refreshGitSources;
 
     @Override
     public void run() {
@@ -51,6 +59,7 @@ public class Sync implements Runnable {
                     .repositoryUri(Optional.ofNullable(registry)
                             .map(UriUtils::fromString)
                             .orElse(null))
+                    .refreshGitSources(refreshGitSources)
                     .build();
             Context context = Context.from(location, cliRc);
 

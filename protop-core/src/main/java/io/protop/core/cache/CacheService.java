@@ -1,11 +1,10 @@
 package io.protop.core.cache;
 
-import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
-import io.protop.core.manifest.ProjectCoordinate;
+import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.revision.Version;
 import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageService;
-import io.protop.core.version.Version;
 import io.reactivex.Completable;
 import io.reactivex.Single;
 import lombok.AllArgsConstructor;
@@ -32,16 +31,16 @@ public class CacheService {
     private final StorageService storageService;
 
     /**
-     * Cache g-zipped response.
+     * Cache g-zipped response from registry.
      */
-    public Single<Path> cache(ProjectCoordinate coordinate, Version version, InputStream tarball) {
+    public Single<Path> cacheFromRegistry(Coordinate coordinate, Version version, InputStream tarball) {
         return Single.create(emitter -> {
             logger.info("Caching {}.", coordinate);
             try {
                 Path versionPath = resolveVersionPath(coordinate, version);
                 unlock(versionPath);
 
-                // write the tarball to version directory
+                // write the tarball to revision directory
                 GZIPInputStream gis = new GZIPInputStream(tarball);
                 TarArchiveInputStream tis = new TarArchiveInputStream(gis);
 
@@ -68,7 +67,7 @@ public class CacheService {
         });
     }
 
-    private Path resolveVersionPath(ProjectCoordinate coordinate, Version version) throws IOException {
+    private Path resolveVersionPath(Coordinate coordinate, Version version) throws IOException {
         Path cache = Storage.pathOf(Storage.GlobalDirectory.CACHE);
 
         Path orgPath = cache.resolve(coordinate.getOrganizationId());
@@ -127,16 +126,11 @@ public class CacheService {
      * Clean everything from the cache.
      */
     public Completable clean() {
-        return Completable.create(emitter -> {
+        return Completable.fromCallable(() -> {
             Path cache = Storage.pathOf(Storage.GlobalDirectory.CACHE);
-
-            try {
-                unlock(cache);
-                FileUtils.cleanDirectory(cache.toFile());
-                emitter.onComplete();
-            } catch (Exception e) {
-                emitter.onError(new ServiceException("Failed to clear cache."));
-            }
+            unlock(cache);
+            FileUtils.cleanDirectory(cache.toFile());
+            return null;
         });
     }
 }

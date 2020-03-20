@@ -2,4 +2,5 @@ dependencies {
     implementation "org.apache.httpcomponents:httpclient:4.5.11"
     implementation "org.apache.httpcomponents:httpmime:4.5.11"
     implementation "org.apache.commons:commons-compress:1.19"
+    implementation "org.eclipse.jgit:org.eclipse.jgit:5.7.0.202003110725-r"
 }

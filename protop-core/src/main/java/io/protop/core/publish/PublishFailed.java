@@ -1,12 +1,12 @@
-package io.protop.core.manifest;
+package io.protop.core.publish;
 
 import io.protop.core.error.ServiceException;
 import io.protop.core.error.ServiceExceptionConsumer;
 
-public class InvalidDependencyName extends ServiceException {
+public class PublishFailed extends ServiceException {
 
-    InvalidDependencyName(String name) {
-        super(String.format("Invalid dependency name: %s.", name));
+    public PublishFailed(String message) {
+        super(message);
     }
 
     @Override

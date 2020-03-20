@@ -1,7 +1,5 @@
 package io.protop.core.storage;
 
-import io.protop.core.error.ServiceError;
-import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -38,8 +36,7 @@ public class Storage {
         try {
             if (!Files.isDirectory(homePath)) {
                 if (Files.isRegularFile(homePath)) {
-                    throw new ServiceException(ServiceError.STORAGE_ERROR,
-                            "Found a file where a directory (or nothing) was expected.");
+                    throw new StorageException("Found a file where a directory (or nothing) was expected.");
                 }
                 logger.info("Initializing base directory: {}.", homePath.toAbsolutePath().toString());
                 Files.createDirectory(homePath);
@@ -51,7 +48,7 @@ public class Storage {
         } catch (IOException e) {
             String message = "Failed to load resource.";
             logger.error(message, e);
-            throw new ServiceException(ServiceError.STORAGE_ERROR, message);
+            throw new RuntimeException(e);
         }
 
         return subDirectory;
@@ -68,10 +65,12 @@ public class Storage {
         TEMP_PUBLICATION_CACHE(".tmp"),
 
         // Sym links to `link`ed projects.
-        LINKS("links"),
+        LINKS("_links"),
 
         // External dependency cache.
-        CACHE("cache");
+        CACHE("_cache"),
+
+        GIT_CACHE("_git");
 
         private final String name;
     }

@@ -2,14 +2,14 @@ package io.protop.core.manifest;
 
 import com.fasterxml.jackson.annotation.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import com.google.common.collect.ImmutableList;
 import io.protop.core.Environment;
-import io.protop.core.error.ServiceError;
-import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
+import io.protop.core.manifest.converters.DependencyMapDeserializer;
 import io.protop.core.manifest.converters.PathListToStringList;
-import io.protop.core.version.Version;
+import io.protop.core.manifest.revision.Version;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
 
@@ -25,6 +25,7 @@ import java.util.Optional;
 
 @Getter
 @SuperBuilder
+@JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonPropertyOrder({"name", "org", "version", "description", "keywords", "license", "homepage"})
 public class Manifest {
@@ -40,8 +41,6 @@ public class Manifest {
 
     @JsonProperty("organization")
     private String organization;
-
-
 
     @JsonProperty("include")
     @JsonSerialize(converter = PathListToStringList.class)
@@ -72,7 +71,8 @@ public class Manifest {
             @JsonProperty("version") @NotNull Version version,
             @JsonProperty("organization") @NotNull String organization,
             @JsonProperty("include") List<Path> include,
-            @JsonProperty("dependencies") DependencyMap dependencies,
+            @JsonProperty("dependencies") @JsonDeserialize(converter = DependencyMapDeserializer.class)
+                    DependencyMap dependencies,
             @JsonProperty("description") String description,
             @JsonProperty("readme") String readme,
             @JsonProperty("keywords") List<String> keywords,
@@ -88,14 +88,6 @@ public class Manifest {
         this.keywords = keywords;
         this.homepage = homepage;
         this.license = license;
-
-        try {
-            logger.info("JSON created with dependency map: {}.", Environment.getInstance().getObjectMapper()
-                    .writeValueAsString(dependencies));
-        } catch (Exception e) {
-            // ...
-        }
-
     }
 
     public static Optional<Manifest> from(Path directory) {
@@ -113,9 +105,9 @@ public class Manifest {
                     .readValue(file, Manifest.class);
             return Optional.of(manifest);
         } catch (IOException e) {
-            logger.error("Failed to parse configuration.", e);
-            throw new ServiceException(ServiceError.MANIFEST_ERROR,
-                    "Failed to parse configuration.");
+            String message = "Failed to parse configuration.";
+            logger.error(message, e);
+            throw new RuntimeException(message, e);
         }
     }
 }

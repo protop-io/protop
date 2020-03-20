@@ -1,34 +1,21 @@
 package io.protop.core.error;
 
-import java.util.Optional;
+/**
+ * A runtime exception that will stop the process from continuing.
+ */
+public abstract class ServiceException extends RuntimeException {
 
-public class ServiceException extends RuntimeException {
-
-    private ServiceError error;
-
-    public ServiceException(ServiceError error) {
-        this.error = error;
-    }
-
-    public ServiceException(String message) {
+    protected ServiceException(String message) {
         super(message);
     }
 
-    public ServiceException(ServiceError error, String message) {
-        super(message);
-        this.error = error;
-    }
-
-    public ServiceException(ServiceError error, Throwable caught) {
+    protected ServiceException(Throwable caught) {
         super(caught);
-        this.error = error;
     }
 
-    public ServiceException(String message, Throwable caught) {
+    protected ServiceException(String message, Throwable caught) {
         super(message, caught);
     }
 
-    public Optional<ServiceError> getError() {
-        return Optional.ofNullable(error);
-    }
+    public abstract void accept(ServiceExceptionConsumer consumer);
 }

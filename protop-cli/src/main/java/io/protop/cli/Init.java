@@ -5,12 +5,14 @@ import com.google.common.collect.ImmutableList;
 import io.protop.cli.errors.ExceptionHandler;
 import io.protop.core.ProjectCreator;
 import io.protop.core.ProjectCreatorImpl;
+import io.protop.core.error.ProjectAlreadyCreated;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
+import io.protop.core.manifest.DependencyMap;
 import io.protop.core.manifest.Manifest;
 import io.protop.core.storage.StorageService;
-import io.protop.core.version.Version;
+import io.protop.core.manifest.revision.Version;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.MaskingCallback;
@@ -30,6 +32,7 @@ public class Init implements Runnable {
     private static final Logger logger = Logger.getLogger(Init.class);
     private static final Version defaultVersion = new Version("0.1.0");
     private static final String CWD = ".";
+    private static final String GITIGNORE_NAME = ".gitignore";
 
     @ParentCommand
     private ProtopCli protop;
@@ -37,12 +40,16 @@ public class Init implements Runnable {
     @Parameters(arity = "0..1",
             description = "Root directory of project",
             defaultValue = ".")
-    private Path directory;
+    private Path projectPath;
 
     @Override
     public void run() {
         Logs.enableIf(protop.isDebugMode());
         new ExceptionHandler().run(() -> {
+            if (Manifest.from(projectPath).isPresent()) {
+                throw new ProjectAlreadyCreated();
+            }
+
             logger.info("Creating a new project.");
 
             LineReader reader = LineReaderBuilder.builder()
@@ -53,22 +60,23 @@ public class Init implements Runnable {
                     .organization(getOrganization(reader))
                     .name(getName(reader))
                     .version(getVersion(reader))
-                    .include(getPathsToInclude(reader))
+                    .include(getPathsToInclude())
+                    .dependencies(DependencyMap.empty())
                     .build();
 
-            createProject(manifest, directory.toAbsolutePath());
+            createProject(manifest, projectPath.toAbsolutePath());
         });
     }
 
-    private void createProject(Manifest manifest, Path directory) {
+    private void createProject(Manifest manifest, Path projectPath) {
         StorageService storageService = new StorageService();
         ProjectCreator projectCreator = new ProjectCreatorImpl(storageService);
 
         try {
-            projectCreator.create(manifest, directory);
+            projectCreator.create(manifest, projectPath);
 
             logger.always("Initialized new project.");
-            recommendGitignore(directory);
+            recommendGitignore();
         } catch (Exception e) {
             logger.always("Failed to create new project.");
             if (!Strings.isNullOrEmpty(e.getMessage()) && (e instanceof ServiceException)) {
@@ -77,16 +85,8 @@ public class Init implements Runnable {
         }
     }
 
-    private List<Path> getPathsToInclude(LineReader reader) {
-        String leftPrompt = String.format("Entry point: (default \"%s\"): ", CWD);
-        String rightPrompt = "";
-        String pathString = reader.readLine(
-                leftPrompt, rightPrompt, (MaskingCallback) null,null);
-        if (Strings.isNullOrEmpty(pathString)) {
-            pathString = CWD;
-        }
-        Path path = Paths.get(CWD).normalize().relativize(Paths.get(pathString));
-        return ImmutableList.of(path);
+    private List<Path> getPathsToInclude() {
+        return ImmutableList.of(Paths.get("."));
     }
 
     private String getOrganization(LineReader reader) {
@@ -114,7 +114,7 @@ public class Init implements Runnable {
     }
 
     private Version getVersion(LineReader reader) {
-        String prompt = String.format("Initial version (default %s): ", defaultVersion);
+        String prompt = String.format("Initial revision (default %s): ", defaultVersion);
         String rightPrompt = "";
         String version = reader.readLine(
                 prompt, rightPrompt, (MaskingCallback) null,null);
@@ -125,9 +125,9 @@ public class Init implements Runnable {
         }
     }
 
-    private void recommendGitignore(Path path) {
-        if (path.resolve(".gitignore").toFile().exists()) {
-            logger.always("It is recommended to add \"protop/\" and \".protoprc\" to your .gitignore.");
+    private void recommendGitignore() {
+        if (projectPath.resolve(GITIGNORE_NAME).toFile().exists()) {
+            logger.always("It is recommended to add \".protop/\" and \".protoprc\" to your .gitignore.");
         }
     }
 }
