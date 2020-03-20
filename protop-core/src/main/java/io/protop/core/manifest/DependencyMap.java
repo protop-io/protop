@@ -2,7 +2,7 @@ package io.protop.core.manifest;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
-import io.protop.core.version.Version;
+import io.protop.core.manifest.revision.RevisionSource;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -10,10 +10,10 @@ import java.util.Map;
 public class DependencyMap {
 
     @JsonValue
-    private final Map<ProjectCoordinate, Version> values;
+    private final Map<Coordinate, RevisionSource> values;
 
     @JsonCreator
-    DependencyMap(Map<ProjectCoordinate, Version> values) {
+    public DependencyMap( Map<Coordinate, RevisionSource> values) {
         this.values = values;
     }
 
@@ -21,11 +21,15 @@ public class DependencyMap {
         this(new HashMap<>());
     }
 
-    public void add(ProjectCoordinate name, Version version) {
-        values.put(name, version);
+    public void add(Coordinate name, RevisionSource revisionSource) {
+        values.put(name, revisionSource);
     }
 
-    public Map<ProjectCoordinate, Version> getValues() {
+    public Map<Coordinate, RevisionSource> getValues() {
         return new HashMap<>(values);
+    }
+
+    public static DependencyMap empty() {
+        return new DependencyMap();
     }
 }

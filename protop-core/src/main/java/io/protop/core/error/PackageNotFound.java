@@ -1,14 +1,19 @@
 package io.protop.core.error;
 
-import io.protop.core.manifest.ProjectCoordinate;
-import io.protop.core.version.Version;
+import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.revision.RevisionSource;
 
-public class PackageNotFound extends ServiceException {
+public final class PackageNotFound extends ServiceException {
 
-    public PackageNotFound(ProjectCoordinate coordinate, Version version) {
-        super(ServiceError.PACKAGE_NOT_FOUND, String.format(
-                "Could not find %s %s.",
+    public PackageNotFound(Coordinate coordinate, RevisionSource revisionSource) {
+        super(String.format(
+                "Could not find package %s %s.",
                 coordinate,
-                version));
+                revisionSource));
+    }
+
+    @Override
+    public void accept(ServiceExceptionConsumer consumer) {
+        consumer.consume(this);
     }
 }

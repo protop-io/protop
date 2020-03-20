@@ -1,7 +1,6 @@
 package io.protop.core;
 
-import io.protop.core.error.ServiceError;
-import io.protop.core.error.ServiceException;
+import io.protop.core.error.ProjectAlreadyCreated;
 import io.protop.core.logs.Logger;
 import io.protop.core.manifest.Manifest;
 import io.protop.core.storage.StorageService;
@@ -24,7 +23,7 @@ public class ProjectCreatorImpl implements ProjectCreator {
         Path configurationFilePath = Paths.get(directory.toString(), Manifest.PROTOP_JSON);
 
         if (Files.exists(configurationFilePath)) {
-            throw new ServiceException(ServiceError.MANIFEST_ERROR, "Project already initialized.");
+            throw new ProjectAlreadyCreated();
         }
 
         storageService.storeJson(manifest, configurationFilePath);

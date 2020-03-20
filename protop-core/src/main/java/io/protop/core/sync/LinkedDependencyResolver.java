@@ -1,10 +1,9 @@
 package io.protop.core.sync;
 
-import io.protop.core.error.ServiceException;
 import io.protop.core.link.LinkedProjectsMap;
 import io.protop.core.logs.Logger;
-import io.protop.core.manifest.ProjectCoordinate;
-import io.protop.core.version.Version;
+import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.revision.RevisionSource;
 import io.reactivex.Single;
 
 import java.io.IOException;
@@ -23,28 +22,26 @@ public class LinkedDependencyResolver implements DependencyResolver {
     }
 
     @Override
-    public Single<Map<ProjectCoordinate, Version>> resolve(
-            Path dependencyDir, Map<ProjectCoordinate, Version> unresolvedDependencies) {
+    public Single<Map<Coordinate, RevisionSource>> resolve(Path dependencyDir,
+                                                           Map<Coordinate, RevisionSource> unresolvedDependencies) {
         return Single.fromCallable(() -> {
             LinkedProjectsMap resolvable = LinkedProjectsMap.load()
                     .blockingGet();
+            Set<Coordinate> resolved = new HashSet<>();
 
-            Set<ProjectCoordinate> resolved = new HashSet<>();
-
-            unresolvedDependencies.forEach((name, version) -> {
-                logger.info("Resolvable links: {}.", resolvable.getProjects());
+            unresolvedDependencies.forEach((name, revision) -> {
                 if (resolvable.getProjects().containsKey(name)) {
                     try {
                         SyncUtils.createSymbolicLink(dependencyDir, name, resolvable.getProjects().get(name));
                         resolved.add(name);
                     } catch (IOException e) {
-                        throw new ServiceException("Unexpectedly failed to resolve linked dependencies.", e);
+                        logger.error("Could not create link to dependency.", e);
+                        throw new RuntimeException(e);
                     }
                 }
             });
 
             resolved.forEach(unresolvedDependencies::remove);
-
             return unresolvedDependencies;
         });
     }

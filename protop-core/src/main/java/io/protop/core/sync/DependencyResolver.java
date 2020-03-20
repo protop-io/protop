@@ -1,7 +1,7 @@
 package io.protop.core.sync;
 
-import io.protop.core.manifest.ProjectCoordinate;
-import io.protop.core.version.Version;
+import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.revision.RevisionSource;
 import io.reactivex.Single;
 
 import java.nio.file.Path;
@@ -18,6 +18,6 @@ public interface DependencyResolver {
      * Resolve dependencies.
      * @return unresolved dependencies.
      */
-    Single<Map<ProjectCoordinate, Version>> resolve(
-            Path dependencyDir, Map<ProjectCoordinate, Version> unresolvedDependencies);
+    Single<Map<Coordinate, RevisionSource>> resolve(
+            Path dependencyDir, Map<Coordinate, RevisionSource> unresolvedDependencies);
 }

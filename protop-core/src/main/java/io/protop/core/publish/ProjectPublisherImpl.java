@@ -5,12 +5,10 @@ import io.protop.core.Context;
 import io.protop.core.Environment;
 import io.protop.core.auth.AuthService;
 import io.protop.core.auth.AuthToken;
-import io.protop.core.error.ServiceError;
-import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.manifest.AggregatedManifest;
 import io.protop.core.manifest.Manifest;
-import io.protop.core.manifest.ProjectCoordinate;
+import io.protop.core.manifest.Coordinate;
 import io.protop.utils.HttpUtils;
 import io.protop.utils.RegistryUtils;
 import io.protop.utils.UriUtils;
@@ -98,8 +96,8 @@ public class ProjectPublisherImpl implements ProjectPublisher {
                     }
                 });
                 // TODO actually deserialize the response, since this may not always be the reason.
-                //  This is just a temporary bandaid.
-                emitter.onError(new ServiceException(ServiceError.VERSION_ALREADY_PUBLISHED));
+                //  This is just a temporary solution.
+                emitter.onError(new PublishFailed("Version already published.")); // this isn't always true obviously...
             }
         });
     }
@@ -108,7 +106,7 @@ public class ProjectPublisherImpl implements ProjectPublisher {
                                                          PublishableProject.CompressedArchiveDetails archiveDetails,
                                                          URI coordinateUri) throws URISyntaxException {
         String tarballName = RegistryUtils.createTarballName(
-                new ProjectCoordinate(manifest.getOrganization(), manifest.getName()),
+                new Coordinate(manifest.getOrganization(), manifest.getName()),
                 manifest.getVersion());
         String tarballUri = new URIBuilder(coordinateUri)
                 .setPath(coordinateUri.getPath() + "/-/" + tarballName)
@@ -141,17 +139,19 @@ public class ProjectPublisherImpl implements ProjectPublisher {
         // and the "versions" is really where the unique versions will be.
         // this is really a sort of patch operation under the hood
 
-        ProjectCoordinate id = new ProjectCoordinate(manifest.getOrganization(), manifest.getName());
+        Coordinate id = new Coordinate(manifest.getOrganization(), manifest.getName());
 
         AggregatedManifest.Attachment tarAttachment;
         try {
             tarAttachment = AggregatedManifest.Attachment.of(archiveDetails.getLocation().toFile());
         } catch (IOException e) {
-            throw new ServiceException("Failed to build publishable manifest.", e);
+            String message = "Failed to build publishable manifest.";
+            logger.error(message, e);
+            throw new RuntimeException(message, e);
         }
 
         // TODO patch this later, doing a GET first and merging this onto that.
-        //  When we do that, make sure the new version isn't already published?
+        //  When we do that, make sure the new revision isn't already published?
         AggregatedManifest.AggregatedManifestBuilder builder = AggregatedManifest.builder()
                 .description(manifest.getDescription())
                 .id(id.toString())

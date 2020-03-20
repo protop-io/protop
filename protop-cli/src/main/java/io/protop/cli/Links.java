@@ -22,7 +22,7 @@ public class Links implements Runnable {
     }
 
     @CommandLine.Command(name = "clean",
-            description = "Clean everything from the cache.")
+            description = "Unlink all currently linked projects.")
     public static class Clean implements Runnable {
 
         private static final Logger logger = Logger.getLogger(Cache.Clean.class);

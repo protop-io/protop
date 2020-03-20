@@ -1,12 +1,12 @@
-package io.protop.core.manifest;
+package io.protop.core.manifest.revision;
 
 import io.protop.core.error.ServiceException;
 import io.protop.core.error.ServiceExceptionConsumer;
 
-public class InvalidDependencyName extends ServiceException {
+public class InvalidRevision extends ServiceException {
 
-    InvalidDependencyName(String name) {
-        super(String.format("Invalid dependency name: %s.", name));
+    public InvalidRevision(String message) {
+        super(message);
     }
 
     @Override

@@ -5,7 +5,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.protop.core.logs.Logger;
-import io.protop.core.version.Version;
+import io.protop.core.manifest.revision.Version;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;

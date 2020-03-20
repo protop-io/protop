@@ -3,10 +3,14 @@ package io.protop.core.manifest;
 import io.protop.core.error.ServiceException;
 import io.protop.core.error.ServiceExceptionConsumer;
 
-public class InvalidDependencyName extends ServiceException {
+public class ManifestNotFound extends ServiceException {
 
-    InvalidDependencyName(String name) {
-        super(String.format("Invalid dependency name: %s.", name));
+    public ManifestNotFound() {
+        super("Did not find a manifest (protop.json).");
+    }
+
+    public ManifestNotFound(String message) {
+        super(message);
     }
 
     @Override
