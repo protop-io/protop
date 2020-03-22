@@ -42,10 +42,10 @@ class ProtopCli implements Runnable {
             description = "Turn on debug logs.")
     private boolean debugMode;
 
-    @Option(names = {"-v", "--version"},
+    @Option(names = {"-v", "--revision"},
             required = false,
             defaultValue = "false",
-            description = "Print the current version of protop.")
+            description = "Print the current revision of protop.")
     private Boolean logVersion;
 
     public void run() {
@@ -61,7 +61,7 @@ class ProtopCli implements Runnable {
     private void logVersion() {
         Environment.getInstance().getVersion().ifPresentOrElse(
                 v -> logger.always("protop " + v),
-                () -> logger.always("Could not determine the current version of protop."));
+                () -> logger.always("Could not determine the current revision of protop."));
     }
 
     public static void main(String... args) {

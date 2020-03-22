@@ -10,7 +10,7 @@ import java.util.Map;
 
 @Getter
 @EqualsAndHashCode
-public class ProjectCoordinate {
+public class Coordinate {
 
     private static final String SLASH = "/";
 
@@ -18,22 +18,22 @@ public class ProjectCoordinate {
     private final String projectId;
 
     @JsonCreator
-    ProjectCoordinate(String value) {
+    Coordinate(String value) {
         this(splitNamesFrom(value));
     }
 
-    public ProjectCoordinate(String organizationId, String projectId) {
+    public Coordinate(String organizationId, String projectId) {
         this.organizationId = organizationId;
         this.projectId = projectId;
     }
 
-    ProjectCoordinate(Map.Entry<String, String> pair) {
+    Coordinate(Map.Entry<String, String> pair) {
         this.organizationId = pair.getKey();
         this.projectId = pair.getValue();
     }
 
-    public static ProjectCoordinate from(String value) {
-        return new ProjectCoordinate(value);
+    public static Coordinate from(String value) {
+        return new Coordinate(value);
     }
 
     private static Map.Entry<String, String> splitNamesFrom(String value) {

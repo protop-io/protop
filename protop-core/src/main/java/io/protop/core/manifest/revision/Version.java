@@ -1,4 +1,4 @@
-package io.protop.core.version;
+package io.protop.core.manifest.revision;
 
 import com.fasterxml.jackson.annotation.JsonValue;
 import lombok.EqualsAndHashCode;
@@ -12,7 +12,7 @@ import java.util.regex.Pattern;
  * {@see https://semver.org/#backusnaur-form-grammar-for-valid-semver-versions}
  */
 @EqualsAndHashCode
-public class Version implements Comparable<Version> {
+public class Version implements RevisionSource, Comparable<Version> {
 
     private static final String PATTERN = "^(?<major>0|[1-9]\\d*)\\.(?<minor>0|[1-9]\\d*)\\.(?<patch>0|[1-9]\\d*)" +
             "(?:-(?<prerelease>(?:0|[1-9]\\d*|\\d*[a-zA-Z-][0-9a-zA-Z-]*)" +
@@ -28,7 +28,7 @@ public class Version implements Comparable<Version> {
         if (matcher.matches()) {
             this.value = value;
         } else {
-            throw new InvalidVersionString();
+            throw new InvalidVersionString(value);
         }
     }
 

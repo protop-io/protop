@@ -1,9 +1,8 @@
 package io.protop.core;
 
-import io.protop.core.error.ServiceError;
-import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.manifest.Manifest;
+import io.protop.core.manifest.ManifestNotFound;
 import io.protop.core.storage.Storage;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -43,7 +42,7 @@ public class Context {
 
     public static Context from(@NotNull Path projectLocation, RuntimeConfiguration... rcs) {
         Manifest manifest = Manifest.from(projectLocation)
-                .orElseThrow(() -> new ServiceException(ServiceError.MANIFEST_ERROR, "Manifest not found."));
+                .orElseThrow(() -> new ManifestNotFound());
 
         List<RuntimeConfiguration> allRcs = new ArrayList<>(Arrays.asList(rcs));
         allRcs.add(RuntimeConfiguration.from(projectLocation)

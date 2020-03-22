@@ -2,8 +2,6 @@ package io.protop.core.storage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.protop.core.Environment;
-import io.protop.core.error.ServiceError;
-import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.reactivex.Completable;
 import io.reactivex.Maybe;
@@ -28,9 +26,9 @@ public class StorageService {
             String fileString = objectMapper.writeValueAsString(bean);
             Files.write(path, fileString.getBytes());
         } catch (IOException e) {
-            String message = "Could not authorize file.";
+            String message = "Failed to write file.";
             logger.error(message, e);
-            throw new ServiceException(ServiceError.STORAGE_ERROR, message);
+            throw new StorageException(message, e);
         }
     }
 
@@ -43,9 +41,9 @@ public class StorageService {
             T obj = objectMapper.readValue(resourcePath.toFile(), clazz);
             return Maybe.just(obj);
         } catch (IOException e) {
-            String message = "Unable to process stored resource.";
+            String message = "Failed to read file.";
             logger.error(message, e);
-            throw new ServiceException(ServiceError.STORAGE_ERROR, message);
+            throw new StorageException(message, e);
         }
     }
 
@@ -53,8 +51,7 @@ public class StorageService {
         return Completable.fromCallable(() -> {
             if (!Files.isDirectory(path)) {
                 if (Files.isRegularFile(path)) {
-                    throw new ServiceException(ServiceError.STORAGE_ERROR,
-                            "Cannot create directory because a file already exists.");
+                    throw new StorageException( "Cannot create directory because a file already exists.");
                 }
                 Files.createDirectory(path);
             }

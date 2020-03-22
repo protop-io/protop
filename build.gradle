@@ -11,7 +11,7 @@ description = "Protop CLI"
 
 allprojects {
     group = "io.protop"
-    version = "0.4.6"
+    version = "0.5.0"
 
     apply plugin: "java"
 
@@ -58,7 +58,7 @@ task distFatJar(type: Jar) {
                 'Built-By'       : System.properties['user.name'],
                 'Build-Timestamp': new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(new Date()),
                 'Created-By'     : "Gradle ${gradle.gradleVersion}",
-                'Build-Jdk'      : "${System.properties['java.version']}",
+                'Build-Jdk'      : "${System.properties['java.revision']}",
                 "Main-Class"     : "io.protop.cli.ProtopCli"
         )
     }

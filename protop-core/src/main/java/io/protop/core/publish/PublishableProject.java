@@ -3,10 +3,9 @@ package io.protop.core.publish;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.Files;
-import io.protop.core.error.ServiceError;
-import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.manifest.Manifest;
+import io.protop.core.manifest.ManifestNotFound;
 import io.protop.core.storage.Storage;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -24,10 +23,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Getter
@@ -55,11 +51,13 @@ public class PublishableProject {
 
     public static PublishableProject from(Path projectLocation) {
         Manifest manifest = Manifest.from(projectLocation)
-                .orElseThrow(() -> new ServiceException(ServiceError.MANIFEST_ERROR, "Project manifest not found."));
+                .orElseThrow(ManifestNotFound::new);
 
         Collection<File> publishableFiles = getPublishableFiles(projectLocation);
         if (publishableFiles.isEmpty()) {
-            throw new ServiceException("No files found to link in the selected path.");
+            throw new PublishFailed("No files found to publish.");
+        } else if (publishableFiles.stream().noneMatch(PublishableProject::isProtoFile)) {
+            throw new PublishFailed("No proto files found to publish");
         }
 
         return new PublishableProject(manifest, projectLocation, ImmutableList.copyOf(publishableFiles));
@@ -100,7 +98,9 @@ public class PublishableProject {
                     .unpackedSize(unpackedSize)
                     .build();
         } catch (IOException e) {
-            throw new ServiceException("Unable to create package.", e);
+            String message = "Failed to create package.";
+            logger.error(message, e);
+            throw new RuntimeException(message, e);
         }
     }
 
@@ -113,11 +113,21 @@ public class PublishableProject {
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
-    @SuppressWarnings("UnstableApiUsage")
+    private static boolean isProtoFile(File file) {
+        String extension = getExtension(file);
+        return Objects.equals(extension, PROTO_FILE_EXT);
+    }
+
+
     private static boolean isPublishableFile(File file) {
-        String extension = Files.getFileExtension(file.getName());
+        String extension = getExtension(file);
         return publishableFileExtensions.contains(extension)
                 || publishableFileNames.contains(file.getName());
+    }
+
+    @SuppressWarnings("UnstableApiUsage")
+    private static String getExtension(File file) {
+        return Files.getFileExtension(file.getName());
     }
 
     @Getter

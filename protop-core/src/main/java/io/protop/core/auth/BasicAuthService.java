@@ -3,8 +3,6 @@ package io.protop.core.auth;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.protop.api.auth.AuthTokenResponse;
 import io.protop.core.Environment;
-import io.protop.core.error.ServiceError;
-import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageService;
@@ -65,10 +63,11 @@ public class BasicAuthService implements AuthService<BasicCredentials> {
                 save(credentialStore);
                 emitter.onComplete();
             } else {
-                // TODO handle better
+                // TODO range of responses handle better
                 logger.info("Not OK status: " + status);
                 logger.info("Not OK response: " + entity);
-                emitter.onError(new ServiceException(ServiceError.AUTH_FAILED));
+
+                emitter.onError(new AuthenticationFailed("Unhappy response from the registry."));
             }
         });
     }

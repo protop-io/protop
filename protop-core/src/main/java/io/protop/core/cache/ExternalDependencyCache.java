@@ -1,11 +1,10 @@
 package io.protop.core.cache;
 
-import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
-import io.protop.core.manifest.ProjectCoordinate;
+import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.revision.InvalidVersionString;
+import io.protop.core.manifest.revision.Version;
 import io.protop.core.storage.Storage;
-import io.protop.core.version.InvalidVersionString;
-import io.protop.core.version.Version;
 import io.reactivex.Single;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -18,27 +17,31 @@ import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
 
+/**
+ * May contain files directly retrieved from registries or symbolic links to projects
+ * cached in the GitCache from git repositories.
+ */
 @Getter
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
-public class CachedProjectsMap {
+public class ExternalDependencyCache {
 
-    private static final Logger logger = Logger.getLogger(CachedProjectsMap.class);
+    private static final Logger logger = Logger.getLogger(ExternalDependencyCache.class);
 
-    private final Map<ProjectCoordinate, Map<Version, Path>> projects;
+    private final Map<Coordinate, Map<Version, Path>> projects;
 
-    public static Single<CachedProjectsMap> load() {
+    public static Single<ExternalDependencyCache> load() {
         Path cacheDirectory = Storage.pathOf(Storage.GlobalDirectory.CACHE);
 
         // This is mutable so we can update it as we cache new dependencies.
-        Map<ProjectCoordinate, Map<Version, Path>> projects = new HashMap<>();
+        Map<Coordinate, Map<Version, Path>> projects = new HashMap<>();
 
         return Single.fromCallable(() -> {
             Files.list(cacheDirectory).forEach(p -> memoizeProjects(projects, p));
-            return new CachedProjectsMap(projects);
+            return new ExternalDependencyCache(projects);
         });
     }
 
-    private static void memoizeProjects(Map<ProjectCoordinate, Map<Version, Path>> memo, Path path) {
+    private static void memoizeProjects(Map<Coordinate, Map<Version, Path>> memo, Path path) {
         if (!Files.isDirectory(path)) {
             return;
         }
@@ -49,20 +52,20 @@ public class CachedProjectsMap {
         try {
             Files.list(path).forEach(projectDir -> {
                 if (Files.isDirectory(projectDir)) {
-                    ProjectCoordinate coordinate = new ProjectCoordinate(orgName, projectDir.toFile().getName());
+                    Coordinate coordinate = new Coordinate(orgName, projectDir.toFile().getName());
 
-                    Map<Version, Path> versions = new HashMap<>();
+                    Map<Version, Path> revisions = new HashMap<>();
                     try {
-                        Files.list(projectDir).forEach(versionPath -> {
-                            String fileName = versionPath.toFile().getName();
+                        Files.list(projectDir).forEach(revisionPath -> {
+                            String fileName = revisionPath.toFile().getName();
                             try {
                                 Version version = new Version(fileName);
-                                versions.put(version, versionPath);
+                                revisions.put(version, revisionPath);
                             } catch (InvalidVersionString e) {
-                                logger.warn("Not a valid version; skipping {}.", fileName);
+                                logger.warn("Not a valid revision; skipping {}.", fileName);
                             }
                         });
-                        memo.put(coordinate, versions);
+                        memo.put(coordinate, revisions);
                     } catch (IOException e) {
                         handleError(e);
                     }
@@ -74,6 +77,6 @@ public class CachedProjectsMap {
     }
 
     private static void handleError(Throwable e) {
-        throw new ServiceException("Failed to load cached projects.", e);
+        throw new RuntimeException("Failed to load cached projects.", e);
     }
 }

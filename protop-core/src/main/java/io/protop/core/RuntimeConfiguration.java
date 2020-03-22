@@ -1,8 +1,6 @@
 package io.protop.core;
 
 import com.google.common.base.Strings;
-import io.protop.core.error.ServiceError;
-import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.utils.UriUtils;
 import lombok.AllArgsConstructor;
@@ -41,8 +39,15 @@ public class RuntimeConfiguration {
     @Nullable
     private final URI syncRepositoryUri;
 
+    @Nullable
+    private final Boolean refreshGitSources;
+
     public static RuntimeConfiguration empty() {
-        return new RuntimeConfiguration(null, null, null);
+        return new RuntimeConfiguration(
+                null,
+                null,
+                null,
+                null);
     }
 
     public static Optional<RuntimeConfiguration> from(Path directory) {
@@ -60,9 +65,9 @@ public class RuntimeConfiguration {
             properties.load(is);
             return Optional.of(runtimeConfigurationFromProperties(properties));
         } catch (IOException e) {
-            logger.error("Failed to parse configuration.", e);
-            throw new ServiceException(ServiceError.RC_ERROR,
-                    "Failed to parse .protoprc.");
+            String message = "Failed to parse .protoprc configuration.";
+            logger.error(message, e);
+            throw new RuntimeException(message, e);
         }
     }
 
@@ -71,6 +76,7 @@ public class RuntimeConfiguration {
                 .repositoryUri(UriUtils.fromString(props.getProperty("registry")))
                 .publishRepositoryUri(UriUtils.fromString(props.getProperty("publish.registry")))
                 .syncRepositoryUri(UriUtils.fromString(props.getProperty("sync.registry")))
+                .refreshGitSources(Boolean.valueOf(props.getProperty("git.refresh")))
                 .build();
     }
 
@@ -79,12 +85,11 @@ public class RuntimeConfiguration {
             throw new InvalidParameterException("Cannot be null");
         }
 
-        logger.info("repositories: {}, {}.", getRepositoryUri(), other.getRepositoryUri());
-        logger.info("resolved: {}.", resolveAsap(getRepositoryUri(), other.getRepositoryUri()));
         return RuntimeConfiguration.builder()
                 .repositoryUri(resolveAsap(getRepositoryUri(), other.getRepositoryUri()))
                 .publishRepositoryUri(resolveAsap(getPublishRepositoryUri(), other.getPublishRepositoryUri()))
                 .syncRepositoryUri(resolveAsap(getSyncRepositoryUri(), other.getSyncRepositoryUri()))
+                .refreshGitSources(resolveAsap(getRefreshGitSources(), other.getRefreshGitSources()))
                 .build();
     }
 
