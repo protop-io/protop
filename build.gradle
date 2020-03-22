@@ -64,9 +64,15 @@ task distFatJar(type: Jar) {
     }
 
     from sourceSets.main.output
-    from configurations.runtimeClasspath.
-            findAll { it.name.endsWith('jar') }.
-            collect { zipTree(it) }
+    
+    // Do the rest of this task as such because https://stackoverflow.com/questions/999489/invalid-signature-file-when-attempting-to-run-a-jar
+    doFirst {
+        
+        from configurations.runtimeClasspath.
+                findAll { it.name.endsWith('jar') }.
+                collect { zipTree(it) }
+    }
+    exclude 'META-INF/*.RSA', 'META-INF/*.SF','META-INF/*.DSA'
 }
 
 plugins.withType(DistributionPlugin) {
