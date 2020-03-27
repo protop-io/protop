@@ -20,7 +20,7 @@ import java.net.URI;
 
 @Command(name = "logout",
         aliases = {"forget"},
-        description = "Remove credentials for the registry.")
+        description = "(experimental) Remove credentials for the registry.")
 public class Logout implements Runnable {
 
     private static final Logger logger = Logger.getLogger(Logout.class);
