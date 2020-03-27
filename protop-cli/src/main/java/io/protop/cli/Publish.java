@@ -21,7 +21,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 @Command(name = "publish",
-        description = "Publish project to the registry.")
+        description = "(experimental) Publish project to the registry.")
 public class Publish implements Runnable {
 
     private static final Logger logger = Logger.getLogger(Publish.class);

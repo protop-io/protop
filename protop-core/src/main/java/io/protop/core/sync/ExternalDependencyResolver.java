@@ -74,16 +74,8 @@ public class ExternalDependencyResolver implements DependencyResolver {
             try {
                 Map<Coordinate, Map<GitUrl, Map.Entry<Version, Path>>> preexistingGitCache = loadGitCache();
                 Map<Coordinate, Map<Version, Path>> preexistingRegistryCache = loadVersionCache();
-
                 Map<Coordinate, RevisionSource> aggregatedDependencies = aggregateDependencies(
-                        projectDependencies,
-                        preexistingGitCache,
-                        preexistingRegistryCache);
-
-                logger.info("Aggregated dependencies: " + new ObjectMapper().writeValueAsString(aggregatedDependencies));
-                // TODO After aggregating the dependencies the first time, we need to walk through the tree again to clear out unused
-                //  dependencies. There maybe be extras left behind from the dependency map of a version of a coordinate less than the
-                //  the version that was ultimately required.
+                        projectDependencies, preexistingRegistryCache);
 
                 Set<Coordinate> resolved = new HashSet<>();
                 aggregatedDependencies.forEach((coordinate, revisionSource) -> {
@@ -184,106 +176,88 @@ public class ExternalDependencyResolver implements DependencyResolver {
 
     private Map<Coordinate, RevisionSource> aggregateDependencies(
             Map<Coordinate, RevisionSource> projectDependencies,
-            Map<Coordinate, Map<GitUrl, Map.Entry<Version, Path>>> gitCache,
             Map<Coordinate, Map<Version, Path>> registryCache) {
 
-        Map<Coordinate, Map<GitUrl, Map.Entry<Version, Manifest>>> gitManifestsForReference =
-                extractGitUrlManifestsFromCache(gitCache);
         Map<Coordinate, Map<Version, Manifest>> registryManifestsForReference =
                 extractRegistryManifestsFromCache(registryCache);
-
-        Map<Coordinate, RevisionSource> aggregated = new HashMap<>();
-
-        // We make two separate queues so that we can treat them slightly differently.
-        // Mainly, throw an exception if a third party dependency has a girurl version.
-        Queue<Map.Entry<Coordinate, RevisionSource>> originalUnchecked =
+        Map<Coordinate, Map.Entry<RevisionSource, Manifest>> aggregated = new HashMap<>();
+        Queue<Map.Entry<Coordinate, RevisionSource>> unchecked =
                 new LinkedList<>(projectDependencies.entrySet());
-        Queue<Map.Entry<Coordinate, RevisionSource>> thirdPartyUnchecked =
-                new LinkedList<>();
 
-        while (!originalUnchecked.isEmpty() || !thirdPartyUnchecked.isEmpty()) {
-            boolean originalDependency = !originalUnchecked.isEmpty();
-            Map.Entry<Coordinate, RevisionSource> entry = originalDependency
-                    ? originalUnchecked.poll()
-                    : thirdPartyUnchecked.poll();
+        while (!unchecked.isEmpty()) {
+            Map.Entry<Coordinate, RevisionSource> entry = unchecked.poll();
             Coordinate coordinate = entry.getKey();
             RevisionSource revisionSource = entry.getValue();
 
             logger.info("checking dependency: {} {}.", coordinate, revisionSource);
 
-            Map<Version, Manifest> knownVersions = registryManifestsForReference.computeIfAbsent(
-                    coordinate, c -> new HashMap<>());
-//            Map<GitUrl, Manifest> knownGitRepos = TODO???
-
             AtomicReference<Manifest> manifest = new AtomicReference<>();
-
             if (revisionSource instanceof Version) {
-                if (knownVersions.containsKey(revisionSource)) {
-                    manifest.set(knownVersions.get(revisionSource));
+                Map<Version, Manifest> knownRegistryRevisions = registryManifestsForReference.computeIfAbsent(
+                        coordinate, c -> new HashMap<>());
+                Version version = (Version) revisionSource;
+                if (knownRegistryRevisions.containsKey(version)) {
+                    manifest.set(knownRegistryRevisions.get(version));
                 } else {
                     // try to retrieve the manifest from the network
                     AggregatedManifest aggregatedManifest = retrieveAggregatedManifestFromRegistry(coordinate)
                             .blockingGet();
                     Map<Version, Manifest> aggregatedVersions = aggregatedManifest.getVersions();
                     registryManifestsForReference.put(coordinate, aggregatedVersions);
-                    if (aggregatedVersions.containsKey(revisionSource)) {
-                        manifest.set(aggregatedVersions.get(revisionSource));
+                    if (aggregatedVersions.containsKey(version)) {
+                        manifest.set(aggregatedVersions.get(version));
                     }
                 }
             } else if (revisionSource instanceof GitUrl) {
-                // Retrieve and cache. We have to do this now so that we can continue to build the dependency tree.
-                Manifest gitRepoManifest = retrieveGitProjectManifest(coordinate, (GitUrl) revisionSource)
+                GitUrl gitUrl = (GitUrl) revisionSource;
+                Manifest gitRepoManifest = retrieveGitProjectManifest(coordinate, gitUrl)
                         .blockingGet();
                 manifest.set(gitRepoManifest);
-
-                // TODO - we need to update the git cache now to reflect the addition, right?
             }
 
             Manifest resolvedManifest = manifest.get();
-
             if (Objects.isNull(resolvedManifest)) {
                 throw new PackageNotFound(coordinate, revisionSource);
             } else {
-                if (!aggregated.containsKey(coordinate) || (compare(aggregated.get(coordinate), revisionSource) < 0)) {
-                    aggregated.put(coordinate, revisionSource);
+                if (!aggregated.containsKey(coordinate) || (compare(aggregated.get(coordinate).getValue(), resolvedManifest) < 0)) {
+                    aggregated.put(coordinate, Map.entry(revisionSource, resolvedManifest));
                     DependencyMap dependencyMap = resolvedManifest.getDependencies();
-
                     if (Objects.nonNull(dependencyMap)) {
-                        dependencyMap.getValues().forEach((subDependencyCoordinate, subDependencyVersion) -> {
-                            if (!aggregated.containsKey(subDependencyCoordinate)
-                                    || compare(aggregated.get(subDependencyCoordinate), subDependencyVersion) < 0) {
-
-                                thirdPartyUnchecked.add(new HashMap.SimpleImmutableEntry<>(
-                                        subDependencyCoordinate, subDependencyVersion));
-                            }
-                        });
+                        unchecked.addAll(dependencyMap.getValues().entrySet());
                     }
                 }
             }
         }
 
-        return aggregated;
-    }
+        logger.info("Aggregated {} external dependencies.", aggregated.size());
 
-    // 1 = a is greater, -1 = b is greater, 0 = both are equal.
-    private int compare(RevisionSource a, RevisionSource b) {
-        if (a instanceof Version) {
-            if (b instanceof Version) {
-                return ((Version) a).compareTo((Version) b);
-            } else {
-                return -1;
-            }
-        } else {
-            if (b instanceof Version) {
-                return 1;
-            } else {
-                return 0;
+        // After aggregating the dependencies the first time, we need to clear out unused dependencies
+        // because there may be extras left behind from the dependency map of a version less than the
+        // the version that was ultimately required.
+        Map<Coordinate, RevisionSource> reduced = new HashMap<>();
+        Queue<Coordinate> reducible = new LinkedList<>(projectDependencies.keySet());
+
+        while (!reducible.isEmpty()) {
+            Coordinate coordinate = reducible.poll();
+            Map.Entry<RevisionSource, Manifest> details = aggregated.get(coordinate);
+            reduced.put(coordinate, details.getKey());
+            DependencyMap dependencyMap = details.getValue().getDependencies();
+            if (!Objects.isNull(dependencyMap)) {
+                reducible.addAll(dependencyMap.getValues().keySet());
             }
         }
+
+        logger.info("Reduced external dependencies to {}.", reduced.size());
+
+        return reduced;
     }
 
-    private Single<AggregatedManifest> retrieveAggregatedManifestFromRegistry(Coordinate coordinate) {
-        return Single.fromCallable(() -> {
+    private int compare(Manifest a, Manifest b) {
+        return a.getVersion().compareTo(b.getVersion());
+    }
+
+    private Maybe<AggregatedManifest> retrieveAggregatedManifestFromRegistry(Coordinate coordinate) {
+        return Maybe.fromCallable(() -> {
             URI uri = RegistryUtils.createManifestUri(getRegistryUri(), coordinate);
             HttpResponse response = createHttpClient()
                     .execute(new HttpGet(uri));
