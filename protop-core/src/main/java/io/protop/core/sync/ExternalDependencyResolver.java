@@ -189,8 +189,6 @@ public class ExternalDependencyResolver implements DependencyResolver {
             Coordinate coordinate = entry.getKey();
             RevisionSource revisionSource = entry.getValue();
 
-            logger.info("checking dependency: {} {}.", coordinate, revisionSource);
-
             AtomicReference<Manifest> manifest = new AtomicReference<>();
             if (revisionSource instanceof Version) {
                 Map<Version, Manifest> knownRegistryRevisions = registryManifestsForReference.computeIfAbsent(
@@ -247,7 +245,7 @@ public class ExternalDependencyResolver implements DependencyResolver {
             }
         }
 
-        logger.info("Reduced external dependencies to {}.", reduced.size());
+        logger.info("Reduced size of external dependencies to {}.", reduced.size());
 
         return reduced;
     }
