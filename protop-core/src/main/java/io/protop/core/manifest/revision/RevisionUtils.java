@@ -31,7 +31,7 @@ public class RevisionUtils {
         }
 
         try {
-            GitSource gitSource = GitSource.fromRawPrefixedUrl(input);
+            GitSource gitSource = GitSource.fromRawPrefixedInput(input);
             return Optional.of(gitSource);
         } catch (InvalidRevision invalidRevision) {
             return Optional.empty();

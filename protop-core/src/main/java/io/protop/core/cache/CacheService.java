@@ -96,10 +96,18 @@ public class CacheService {
         return versionPath;
     }
 
+    public void unlock(Storage.GlobalDirectory globalDirectory) {
+        unlock(Storage.pathOf(globalDirectory));
+    }
+
     private void unlock(Path dependencyDir) {
         logger.info("Unlocking dependencies.");
         // TODO handle "false" response
         walkAndApply(dependencyDir, file -> file.setWritable(true));
+    }
+
+    public void lock(Storage.GlobalDirectory globalDirectory) {
+        lock(Storage.pathOf(globalDirectory));
     }
 
     /**

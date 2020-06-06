@@ -280,6 +280,8 @@ public class ExternalDependencyResolver implements DependencyResolver {
 
     private Maybe<Manifest> retrieveGitProjectManifest(Coordinate coordinate, GitSource gitSource) {
         return Maybe.fromCallable(() -> {
+            cacheService.unlock(Storage.GlobalDirectory.GIT_CACHE);
+
             Path orgPath = Storage.pathOf(Storage.GlobalDirectory.GIT_CACHE)
                     .resolve(coordinate.getOrganizationId());
             storageService.createDirectoryIfNotExists(orgPath);
@@ -307,14 +309,35 @@ public class ExternalDependencyResolver implements DependencyResolver {
                 try {
                     logger.info("Retrieving {} {}.", coordinate, gitSource);
                     Git.cloneRepository()
-                            .setURI(gitSource.getRaw())
+                            .setURI(gitSource.getRawUrl())
                             .setDirectory(gitUrlDirectory)
+                            .setCloneAllBranches(true)
                             .call();
                 } catch (GitAPIException e) {
+                    // TODO rethrow?
                     String message = String.format("Failed to retrieve %s from %s.", coordinate, gitSource);
                     logger.error(message, e);
                 }
             }
+
+
+            Optional<String> branchName = Optional.ofNullable(gitSource.getBranchName());
+            try {
+                if (branchName.isPresent()) {
+                    logger.info("git directory: " + gitUrlDirectory);
+                    Git git = Git.open(gitUrlDirectory);
+                    git.checkout()
+                            .setCreateBranch(false)
+                            .setName(branchName.get())
+                            .call();
+                }
+            } catch (GitAPIException e) {
+                String message = String.format("Failed to find branch \"%s\" in Git repo for %s: %s.",
+                        branchName.get(), coordinate, gitSource);
+                logger.error(message, e);
+            }
+
+            cacheService.lock(Storage.GlobalDirectory.GIT_CACHE);
 
             return Manifest.from(gitUrlPath).orElse(null);
         });
@@ -322,9 +345,7 @@ public class ExternalDependencyResolver implements DependencyResolver {
 
     private Optional<Path> retrieveFromRegistryAndCache(Coordinate coordinate, Version version) throws IOException, URISyntaxException {
         URI uri = RegistryUtils.createTarballUri(
-                getRegistryUri(),
-                coordinate,
-                version);
+                getRegistryUri(), coordinate, version);
         HttpResponse response = createHttpClient()
                 .execute(new HttpGet(uri));
 
