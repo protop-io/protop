@@ -11,7 +11,7 @@ public class RevisionUtils {
     }
 
     public static RevisionSource fromString(final String input) {
-        Optional<GitUrl> gitUrl = mapStringToGitUrl(input);
+        Optional<GitSource> gitUrl = mapStringToGitUrl(input);
         if (gitUrl.isPresent()) {
             return gitUrl.get();
         }
@@ -25,14 +25,14 @@ public class RevisionUtils {
 
     }
 
-    private static Optional<GitUrl> mapStringToGitUrl(final String input) {
+    private static Optional<GitSource> mapStringToGitUrl(final String input) {
         if (Strings.isNullOrEmpty(input)){
             return Optional.empty();
         }
 
         try {
-            GitUrl gitUrl = GitUrl.fromRawPrefixedUrl(input);
-            return Optional.of(gitUrl);
+            GitSource gitSource = GitSource.fromRawPrefixedUrl(input);
+            return Optional.of(gitSource);
         } catch (InvalidRevision invalidRevision) {
             return Optional.empty();
         }

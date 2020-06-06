@@ -10,7 +10,7 @@ import io.protop.core.cache.GitCache;
 import io.protop.core.error.PackageNotFound;
 import io.protop.core.logs.Logger;
 import io.protop.core.manifest.*;
-import io.protop.core.manifest.revision.GitUrl;
+import io.protop.core.manifest.revision.GitSource;
 import io.protop.core.manifest.revision.RevisionSource;
 import io.protop.core.manifest.revision.Version;
 import io.protop.core.storage.Storage;
@@ -72,7 +72,7 @@ public class ExternalDependencyResolver implements DependencyResolver {
 
         return Single.create(emitter -> {
             try {
-                Map<Coordinate, Map<GitUrl, Map.Entry<Version, Path>>> preexistingGitCache = loadGitCache();
+                Map<Coordinate, Map<GitSource, Map.Entry<Version, Path>>> preexistingGitCache = loadGitCache();
                 Map<Coordinate, Map<Version, Path>> preexistingRegistryCache = loadVersionCache();
                 Map<Coordinate, RevisionSource> aggregatedDependencies = aggregateDependencies(
                         projectDependencies, preexistingRegistryCache);
@@ -80,7 +80,7 @@ public class ExternalDependencyResolver implements DependencyResolver {
                 Set<Coordinate> resolved = new HashSet<>();
                 aggregatedDependencies.forEach((coordinate, revisionSource) -> {
                     try {
-                        Map<GitUrl, Map.Entry<Version, Path>> cachedGitRepos = preexistingGitCache.computeIfAbsent(coordinate, c -> new HashMap<>());
+                        Map<GitSource, Map.Entry<Version, Path>> cachedGitRepos = preexistingGitCache.computeIfAbsent(coordinate, c -> new HashMap<>());
                         Map<Version, Path> cachedVersions = preexistingRegistryCache.computeIfAbsent(coordinate, c -> new HashMap<>());
 
                         AtomicReference<Path> path = new AtomicReference<>();
@@ -93,16 +93,16 @@ public class ExternalDependencyResolver implements DependencyResolver {
                                 logger.info("Not found; attempting to retrieve from registry.");
                                 retrieveFromRegistryAndCache(coordinate, version).ifPresent(path::set);
                             }
-                        } else if (revisionSource instanceof GitUrl) {
-                            GitUrl gitUrl = (GitUrl) revisionSource;
+                        } else if (revisionSource instanceof GitSource) {
+                            GitSource gitSource = (GitSource) revisionSource;
 
-                            if (cachedGitRepos.containsKey(gitUrl)) {
-                                path.set(cachedGitRepos.get(gitUrl).getValue());
+                            if (cachedGitRepos.containsKey(gitSource)) {
+                                path.set(cachedGitRepos.get(gitSource).getValue());
                             } else {
                                 // Everything should have already been cached for the git repo, because we can't retrieve a
                                 // manifest otherwise.
                                 // If that ever changes, we'll want to factor potentially retrieving from git into this called method.
-                                retrieveFromGitCache(coordinate, gitUrl).ifPresent(path::set);
+                                retrieveFromGitCache(coordinate, gitSource).ifPresent(path::set);
                             }
                         }
 
@@ -135,7 +135,7 @@ public class ExternalDependencyResolver implements DependencyResolver {
                 .getProjects();
     }
 
-    private Map<Coordinate, Map<GitUrl, Map.Entry<Version, Path>>> loadGitCache() {
+    private Map<Coordinate, Map<GitSource, Map.Entry<Version, Path>>> loadGitCache() {
         return GitCache.load().blockingGet()
                 .getProjects();
     }
@@ -157,16 +157,16 @@ public class ExternalDependencyResolver implements DependencyResolver {
         return output;
     }
 
-    private Map<Coordinate, Map<GitUrl, Map.Entry<Version, Manifest>>> extractGitUrlManifestsFromCache(
-            Map<Coordinate, Map<GitUrl, Map.Entry<Version, Path>>> gitCache) {
-        Map<Coordinate, Map<GitUrl, Map.Entry<Version, Manifest>>> output = new HashMap<>();
+    private Map<Coordinate, Map<GitSource, Map.Entry<Version, Manifest>>> extractGitUrlManifestsFromCache(
+            Map<Coordinate, Map<GitSource, Map.Entry<Version, Path>>> gitCache) {
+        Map<Coordinate, Map<GitSource, Map.Entry<Version, Manifest>>> output = new HashMap<>();
 
         gitCache.forEach(((coordinate, gitUrlEntryMap) -> {
-            Map<GitUrl, Map.Entry<Version, Manifest>> gitManifestMap = new HashMap<>();
-            gitUrlEntryMap.forEach(((gitUrl, versionPathEntry) -> {
+            Map<GitSource, Map.Entry<Version, Manifest>> gitManifestMap = new HashMap<>();
+            gitUrlEntryMap.forEach(((gitSource, versionPathEntry) -> {
                 Manifest manifest = Manifest.from(versionPathEntry.getValue())
                         .orElseThrow(ManifestNotFound::new);
-                gitManifestMap.put(gitUrl, Map.entry(versionPathEntry.getKey(), manifest));
+                gitManifestMap.put(gitSource, Map.entry(versionPathEntry.getKey(), manifest));
             }));
             output.put(coordinate, gitManifestMap);
         }));
@@ -206,9 +206,9 @@ public class ExternalDependencyResolver implements DependencyResolver {
                         manifest.set(aggregatedVersions.get(version));
                     }
                 }
-            } else if (revisionSource instanceof GitUrl) {
-                GitUrl gitUrl = (GitUrl) revisionSource;
-                Manifest gitRepoManifest = retrieveGitProjectManifest(coordinate, gitUrl)
+            } else if (revisionSource instanceof GitSource) {
+                GitSource gitSource = (GitSource) revisionSource;
+                Manifest gitRepoManifest = retrieveGitProjectManifest(coordinate, gitSource)
                         .blockingGet();
                 manifest.set(gitRepoManifest);
             }
@@ -278,7 +278,7 @@ public class ExternalDependencyResolver implements DependencyResolver {
         });
     }
 
-    private Maybe<Manifest> retrieveGitProjectManifest(Coordinate coordinate, GitUrl gitUrl) {
+    private Maybe<Manifest> retrieveGitProjectManifest(Coordinate coordinate, GitSource gitSource) {
         return Maybe.fromCallable(() -> {
             Path orgPath = Storage.pathOf(Storage.GlobalDirectory.GIT_CACHE)
                     .resolve(coordinate.getOrganizationId());
@@ -287,7 +287,7 @@ public class ExternalDependencyResolver implements DependencyResolver {
             Path projectPath = orgPath.resolve(coordinate.getProjectId());
             storageService.createDirectoryIfNotExists(projectPath);
 
-            Path gitUrlPath = projectPath.resolve(gitUrl.getUrlEncoded());
+            Path gitUrlPath = projectPath.resolve(gitSource.getUrlEncoded());
             File gitUrlDirectory = gitUrlPath.toFile();
 
             boolean refreshGitSources = Optional.ofNullable(context.getRc().getRefreshGitSources())
@@ -305,13 +305,13 @@ public class ExternalDependencyResolver implements DependencyResolver {
                 }
 
                 try {
-                    logger.info("Retrieving {} {}.", coordinate, gitUrl);
+                    logger.info("Retrieving {} {}.", coordinate, gitSource);
                     Git.cloneRepository()
-                            .setURI(gitUrl.getRaw())
+                            .setURI(gitSource.getRaw())
                             .setDirectory(gitUrlDirectory)
                             .call();
                 } catch (GitAPIException e) {
-                    String message = String.format("Failed to retrieve %s from %s.", coordinate, gitUrl);
+                    String message = String.format("Failed to retrieve %s from %s.", coordinate, gitSource);
                     logger.error(message, e);
                 }
             }
@@ -343,19 +343,19 @@ public class ExternalDependencyResolver implements DependencyResolver {
         }
     }
 
-    private Optional<Path> retrieveFromGitCache(Coordinate coordinate, GitUrl gitUrl) {
+    private Optional<Path> retrieveFromGitCache(Coordinate coordinate, GitSource gitSource) {
         GitCache gitCache = GitCache.load().blockingGet();
 
-        Map<Coordinate, Map<GitUrl, Map.Entry<Version, Path>>> projects = gitCache.getProjects();
+        Map<Coordinate, Map<GitSource, Map.Entry<Version, Path>>> projects = gitCache.getProjects();
 
         if (projects.containsKey(coordinate)) {
-            Map<GitUrl, Map.Entry<Version, Path>> revisions = projects.get(coordinate);
-            if (revisions.containsKey(gitUrl)) {
-                return Optional.of(revisions.get(gitUrl).getValue());
+            Map<GitSource, Map.Entry<Version, Path>> revisions = projects.get(coordinate);
+            if (revisions.containsKey(gitSource)) {
+                return Optional.of(revisions.get(gitSource).getValue());
             }
         }
 
-        logger.info("Project {} from {} not found in cache.", coordinate, gitUrl);
+        logger.info("Project {} from {} not found in cache.", coordinate, gitSource);
         return Optional.empty();
     }
 
