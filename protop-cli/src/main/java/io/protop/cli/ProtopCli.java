@@ -21,9 +21,11 @@ import picocli.CommandLine.Option;
         subcommands = {
                 HelpCommand.class,
                 Init.class,
-                Publish.class,
-                Login.class,
-                Logout.class,
+                // These are orphaned features for now; to use during development,
+                //  simply uncomment them.
+//                Publish.class,
+//                Login.class,
+//                Logout.class,
                 Link.class,
                 Unlink.class,
                 Links.class,
