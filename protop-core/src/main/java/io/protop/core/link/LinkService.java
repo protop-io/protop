@@ -1,11 +1,13 @@
 package io.protop.core.link;
 
 import io.protop.core.logs.Logger;
-import io.protop.core.manifest.Manifest;
 import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.Manifest;
 import io.protop.core.publish.PublishableProject;
 import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageUtils;
+import io.reactivex.Completable;
+import io.reactivex.Observable;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -40,9 +42,39 @@ public class LinkService {
         }
     }
 
-    public void clean() throws IOException {
-        Path linksDirectory = getLinksDirectory();
-        Files.list(linksDirectory).forEach(path -> path.toFile().delete());
+    public Completable clean() {
+        return Completable.create(emitter -> {
+            LinkedProjectsMap.load().subscribe(map -> {
+                map.getProjects().forEach(((coordinate, path) -> {
+                    try {
+                        Files.delete(path);
+                    } catch (IOException e) {
+                        logger.error("Failed to delete " + path, e);
+                        emitter.onError(e);
+                    }
+                }));
+                emitter.onComplete();
+            }).dispose();
+        });
+    }
+
+    /**
+     *
+     * @return a list of details about locally linked projects
+     */
+    public Observable<LinkDetail> list() {
+        return Observable.create(emitter -> {
+            LinkedProjectsMap.load().subscribe(map -> {
+                map.getProjects().forEach(((coordinate, path) -> {
+                    try {
+                        emitter.onNext(new LinkDetail(coordinate, path.toRealPath()));
+                    } catch (IOException e) {
+                        emitter.onError(e);
+                    }
+                }));
+                emitter.onComplete();
+            }).dispose();
+        });
     }
 
     private Path getPathToLink(Coordinate coordinate) throws IOException {
