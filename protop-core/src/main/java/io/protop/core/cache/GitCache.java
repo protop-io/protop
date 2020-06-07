@@ -4,7 +4,7 @@ import io.protop.core.logs.Logger;
 import io.protop.core.manifest.Coordinate;
 import io.protop.core.manifest.Manifest;
 import io.protop.core.manifest.ManifestNotFound;
-import io.protop.core.manifest.revision.GitUrl;
+import io.protop.core.manifest.revision.GitSource;
 import io.protop.core.manifest.revision.InvalidRevision;
 import io.protop.core.manifest.revision.Version;
 import io.protop.core.storage.Storage;
@@ -25,13 +25,13 @@ public class GitCache {
 
     private static final Logger logger = Logger.getLogger(GitCache.class);
 
-    private final Map<Coordinate, Map<GitUrl, Map.Entry<Version, Path>>> projects;
+    private final Map<Coordinate, Map<GitSource, Map.Entry<Version, Path>>> projects;
 
     public static Single<GitCache> load() {
         Path cacheDirectory = Storage.pathOf(Storage.GlobalDirectory.GIT_CACHE);
 
         // This is mutable so we can update it as we cache new dependencies.
-        Map<Coordinate, Map<GitUrl, Map.Entry<Version, Path>>> projects = new HashMap<>();
+        Map<Coordinate, Map<GitSource, Map.Entry<Version, Path>>> projects = new HashMap<>();
 
         return Single.fromCallable(() -> {
             Files.list(cacheDirectory).forEach(p -> memoizeProjects(projects, p));
@@ -39,7 +39,7 @@ public class GitCache {
         });
     }
 
-    private static void memoizeProjects(Map<Coordinate, Map<GitUrl, Map.Entry<Version, Path>>> memo, Path path) {
+    private static void memoizeProjects(Map<Coordinate, Map<GitSource, Map.Entry<Version, Path>>> memo, Path path) {
         if (!Files.isDirectory(path)) {
             return;
         }
@@ -52,15 +52,15 @@ public class GitCache {
                 if (Files.isDirectory(projectDir)) {
                     Coordinate coordinate = new Coordinate(orgName, projectDir.toFile().getName());
 
-                    Map<GitUrl, Map.Entry<Version, Path>> revisions = new HashMap<>();
+                    Map<GitSource, Map.Entry<Version, Path>> revisions = new HashMap<>();
                     try {
                         Files.list(projectDir).forEach(gitUrlPath -> {
                             String fileName = gitUrlPath.toFile().getName();
                             try {
-                                GitUrl gitUrl = GitUrl.fromEncodedUrl(fileName);
+                                GitSource gitSource = GitSource.fromEncodedUrl(fileName);
                                 Manifest manifest = Manifest.from(gitUrlPath)
                                         .orElseThrow(ManifestNotFound::new);
-                                revisions.put(gitUrl, Map.entry(manifest.getVersion(), gitUrlPath));
+                                revisions.put(gitSource, Map.entry(manifest.getVersion(), gitUrlPath));
                             } catch (InvalidRevision e) {
                                 logger.warn("Not a valid git repository URL; skipping {}.", fileName);
                             } catch (ManifestNotFound e) {

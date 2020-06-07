@@ -96,10 +96,18 @@ public class CacheService {
         return versionPath;
     }
 
+    public void unlock(Storage.GlobalDirectory globalDirectory) {
+        unlock(Storage.pathOf(globalDirectory));
+    }
+
     private void unlock(Path dependencyDir) {
         logger.info("Unlocking dependencies.");
         // TODO handle "false" response
         walkAndApply(dependencyDir, file -> file.setWritable(true));
+    }
+
+    public void lock(Storage.GlobalDirectory globalDirectory) {
+        lock(Storage.pathOf(globalDirectory));
     }
 
     /**
@@ -123,13 +131,21 @@ public class CacheService {
     }
 
     /**
-     * Clean everything from the cache.
+     * Clean everything from the cache (including registry and git sources).
      */
     public Completable clean() {
         return Completable.fromCallable(() -> {
             Path cache = Storage.pathOf(Storage.GlobalDirectory.CACHE);
             unlock(cache);
             FileUtils.cleanDirectory(cache.toFile());
+            lock(cache);
+
+            // Git sources are currently cached in a sibling directory
+            Path gitCache = Storage.pathOf(Storage.GlobalDirectory.GIT_CACHE);
+            unlock(gitCache);
+            FileUtils.cleanDirectory(gitCache.toFile());
+            lock(gitCache);
+
             return null;
         });
     }
