@@ -3,12 +3,9 @@ package io.protop.core.manifest;
 import com.fasterxml.jackson.annotation.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
-import com.fasterxml.jackson.databind.annotation.JsonSerialize;
-import com.google.common.collect.ImmutableList;
 import io.protop.core.Environment;
 import io.protop.core.logs.Logger;
 import io.protop.core.manifest.converters.DependencyMapDeserializer;
-import io.protop.core.manifest.converters.PathListToStringList;
 import io.protop.core.manifest.revision.Version;
 import lombok.Getter;
 import lombok.experimental.SuperBuilder;
@@ -20,7 +17,6 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
 
 @Getter
@@ -42,9 +38,9 @@ public class Manifest {
     @JsonProperty("organization")
     private String organization;
 
-    @JsonProperty("include")
-    @JsonSerialize(converter = PathListToStringList.class)
-    private List<Path> include;
+//    @JsonProperty("include")
+//    @JsonSerialize(converter = PathListToStringList.class)
+//    private List<Path> include;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonProperty("dependencies")
@@ -70,7 +66,7 @@ public class Manifest {
             @JsonProperty("name") @NotNull String name,
             @JsonProperty("version") @NotNull Version version,
             @JsonProperty("organization") @NotNull String organization,
-            @JsonProperty("include") List<Path> include,
+//            @JsonProperty("include") List<Path> include,
             @JsonProperty("dependencies") @JsonDeserialize(converter = DependencyMapDeserializer.class)
                     DependencyMap dependencies,
             @JsonProperty("description") String description,
@@ -81,7 +77,7 @@ public class Manifest {
         this.name = name;
         this.version = version;
         this.organization = organization;
-        this.include = Objects.isNull(include) ? ImmutableList.of() : ImmutableList.copyOf(include);
+//        this.include = Objects.isNull(include) ? ImmutableList.of() : ImmutableList.copyOf(include);
         this.dependencies = dependencies;
         this.description = description;
         this.readme = readme;

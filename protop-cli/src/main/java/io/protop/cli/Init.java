@@ -1,7 +1,6 @@
 package io.protop.cli;
 
 import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableList;
 import io.protop.cli.errors.ExceptionHandler;
 import io.protop.core.ProjectCreator;
 import io.protop.core.ProjectCreatorImpl;
@@ -9,10 +8,9 @@ import io.protop.core.error.ProjectAlreadyCreated;
 import io.protop.core.error.ServiceException;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
-import io.protop.core.manifest.DependencyMap;
 import io.protop.core.manifest.Manifest;
-import io.protop.core.storage.StorageService;
 import io.protop.core.manifest.revision.Version;
+import io.protop.core.storage.StorageService;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.MaskingCallback;
@@ -22,8 +20,6 @@ import picocli.CommandLine.Parameters;
 import picocli.CommandLine.ParentCommand;
 
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.List;
 
 @Command(name = "init",
         description = "Initialize a protop project (generates a protop.json).")
@@ -60,8 +56,8 @@ public class Init implements Runnable {
                     .organization(getOrganization(reader))
                     .name(getName(reader))
                     .version(getVersion(reader))
-                    .include(getPathsToInclude())
-                    .dependencies(DependencyMap.empty())
+//                    .include(getPathsToInclude())
+//                    .dependencies(DependencyMap.empty())
                     .build();
 
             createProject(manifest, projectPath.toAbsolutePath());
@@ -85,9 +81,9 @@ public class Init implements Runnable {
         }
     }
 
-    private List<Path> getPathsToInclude() {
-        return ImmutableList.of(Paths.get("."));
-    }
+//    private List<Path> getPathsToInclude() {
+//        return ImmutableList.of(Paths.get("."));
+//    }
 
     private String getOrganization(LineReader reader) {
         String prompt = "Organization name (required): ";

@@ -93,6 +93,8 @@ public class AggregatedManifest {
         this.attachments = attachments;
     }
 
+    // FIXME This is all going to change once the API is settled. Getting metadata should be possible apart from getting
+    //  the package itself. So "attachments" won't exist; just metadata and data.
     @AllArgsConstructor
     public static class Attachment {
 

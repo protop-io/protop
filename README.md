@@ -61,8 +61,7 @@ This will generate a manifest file named `protop.json`.
 {
   "name" : "numbers",
   "version" : "1970.1.1.SNAPSHOT",
-  "organization" : "awesome-labs",
-  "include" : [ "." ]
+  "organization" : "awesome-labs"
 }
 ```
 
