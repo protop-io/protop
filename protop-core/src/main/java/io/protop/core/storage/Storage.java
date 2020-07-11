@@ -81,8 +81,9 @@ public class Storage {
 
         PROTOP(".protop"),
 
-        // Is actually nested under .protop
-        DEPS("path");
+        // These are actually nested under .protop
+        PATH("path"),
+        DEPS("deps");
 
         private final String name;
     }
