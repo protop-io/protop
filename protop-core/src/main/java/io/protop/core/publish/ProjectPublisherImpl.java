@@ -1,32 +1,25 @@
 package io.protop.core.publish;
 
-import com.google.common.collect.ImmutableMap;
+import com.google.protobuf.ByteString;
+import io.grpc.Channel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.stub.StreamObserver;
 import io.protop.core.Context;
-import io.protop.core.Environment;
+import io.protop.core.RuntimeConfiguration;
 import io.protop.core.auth.AuthService;
-import io.protop.core.auth.AuthToken;
 import io.protop.core.logs.Logger;
-import io.protop.core.manifest.AggregatedManifest;
 import io.protop.core.manifest.Manifest;
-import io.protop.core.manifest.Coordinate;
-import io.protop.utils.HttpUtils;
-import io.protop.utils.RegistryUtils;
-import io.protop.utils.UriUtils;
+import io.protop.registry.data.Package;
+import io.protop.registry.services.Publish;
+import io.protop.registry.services.PublishServiceGrpc;
 import io.reactivex.Completable;
+import io.reactivex.CompletableEmitter;
 import lombok.AllArgsConstructor;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.utils.URIBuilder;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.util.EntityUtils;
 
-import java.io.IOException;
+import java.io.FileInputStream;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @AllArgsConstructor
 public class ProjectPublisherImpl implements ProjectPublisher {
@@ -36,137 +29,95 @@ public class ProjectPublisherImpl implements ProjectPublisher {
     private final Context context;
     private final AuthService<?> authService;
 
+    private URI getPublishURI() {
+        RuntimeConfiguration rc = context.getRc();
+        URI registry = Optional.ofNullable(rc.getPublishRepositoryUri())
+                .orElse(rc.getRepositoryUri());
+        return Optional.ofNullable(registry)
+                .orElseThrow(() -> new RuntimeException("Could not resolve the registry URL."));
+    }
+
+    private PublishServiceGrpc.PublishServiceStub createPublishServiceStub(URI publishURI) {
+        Channel channel = ManagedChannelBuilder
+                .forTarget(publishURI.toString())
+                .build();
+        return PublishServiceGrpc
+                .newStub(channel);
+    }
+
+//    private Maybe<AuthToken> getAuthToken(URI uri) {
+//        return authService.getStoredToken(uri)
+//                .switchIfEmpty(Maybe.defer(authService.authorize("TODO")));
+//    }
+
     @Override
     public Completable publish(PublishableProject project) {
         return Completable.create(emitter -> {
-            URI registry = context.getRc().getRepositoryUri();
+            URI publishURI = getPublishURI();
             Manifest manifest = project.getManifest();
             PublishableProject.CompressedArchiveDetails archiveDetails = project.compressAndZip();
+            Publish.Manifest publishableManifest = buildPublishableManifest(manifest, archiveDetails);
 
-            Optional<AuthToken> token = Optional.ofNullable(
-                    authService.getStoredToken(registry).blockingGet());
+            PublishServiceGrpc.PublishServiceStub publishServiceStub = createPublishServiceStub(publishURI);
+            StreamObserver<Publish.PublishRequest> requestObserver = publishServiceStub.publish(
+                    createResponseObserver(emitter));
 
-            HttpClient client = token
-                    .map(HttpUtils::createHttpClientWithToken)
-                    .orElseGet(HttpUtils::createHttpClient);
+            requestObserver.onNext(Publish.PublishRequest.newBuilder()
+                    .setManifest(publishableManifest)
+                    .build());
 
-            try {
-                URI coordinateUri = createFullPublishUri(registry, manifest);
-                PublishableManifest publishableManifest = buildPublishableManifest(manifest, archiveDetails, coordinateUri);
-                AggregatedManifest aggregatedManifest = buildManifest(publishableManifest, archiveDetails);
-                publish(aggregatedManifest, client, coordinateUri).subscribe(
-                        emitter::onComplete,
-                        emitter::onError).dispose();
-            } catch (URISyntaxException e) {
-                logger.error("Failed to upload project.", e);
-                emitter.onError(e);
+            FileInputStream fis = new FileInputStream(archiveDetails.getLocation().toFile());
+            byte[] buffer = new byte[1024*1024];
+            while (fis.read(buffer) > 0) {
+                requestObserver.onNext(Publish.PublishRequest.newBuilder()
+                        .setData(Package.DataChunk.newBuilder()
+                                .setData(ByteString.copyFrom(buffer))
+                                .build())
+                        .build());
             }
+            requestObserver.onCompleted();
+            fis.close();
+            emitter.onComplete();
         });
     }
 
-    private URI createFullPublishUri(URI registry, Manifest manifest) throws URISyntaxException {
-        return UriUtils.appendPathSegments(
-                registry,
-                manifest.getOrganization(),
-                manifest.getName());
-    }
-
-    private Completable publish(AggregatedManifest aggregatedManifest, HttpClient client, URI assetUri) {
-        return Completable.create(emitter -> {
-            HttpPut put = new HttpPut(assetUri);
-            String requestEntity = Environment.getInstance().getObjectMapper()
-                    .writeValueAsString(aggregatedManifest);
-            put.setEntity(new StringEntity(requestEntity));
-
-            HttpResponse response = client.execute(put);
-            logger.info("Publish response status: {}.", response.getStatusLine().getStatusCode());
-
-            int status = response.getStatusLine().getStatusCode();
-            if (status == HttpStatus.SC_OK) {
-                emitter.onComplete();;
-            } else {
-                HttpEntity responseEntity = response.getEntity();
-                Optional.ofNullable(responseEntity).ifPresent(entity -> {
-                    try {
-                        String content = EntityUtils.toString(entity);
-                        // TODO map to a descriptive error from some backend code (TODO there as well)
-                        logger.info("Publish response entity: {}.", content);
-                    } catch (IOException ioe) {
-                        emitter.onError(ioe);
-                    }
-                });
-                // TODO actually deserialize the response, since this may not always be the reason.
-                //  This is just a temporary solution.
-                emitter.onError(new PublishFailed("Version already published.")); // this isn't always true obviously...
+    private StreamObserver<Publish.PublishStatus> createResponseObserver(CompletableEmitter emitter) {
+        return new StreamObserver<>() {
+            @Override
+            public void onNext(Publish.PublishStatus status) {
+                // TODO something with status
             }
-        });
+            @Override
+            public void onError(Throwable t) {
+                emitter.onError(t);
+            }
+            @Override
+            public void onCompleted() {
+                // Nothing to do.
+            }
+        };
     }
 
-    private PublishableManifest buildPublishableManifest(Manifest manifest,
-                                                         PublishableProject.CompressedArchiveDetails archiveDetails,
-                                                         URI coordinateUri) throws URISyntaxException {
-        String tarballName = RegistryUtils.createTarballName(
-                new Coordinate(manifest.getOrganization(), manifest.getName()),
-                manifest.getVersion());
-        String tarballUri = new URIBuilder(coordinateUri)
-                .setPath(coordinateUri.getPath() + "/-/" + tarballName)
-                .build()
-                .toString();
-        return PublishableManifest.builder()
-                .name(manifest.getName())
-                .version(manifest.getVersion())
-                .dependencies(manifest.getDependencies())
-                .organization(manifest.getOrganization())
-                .readme(manifest.getReadme())
-                .description(manifest.getDescription())
-                .homepage(manifest.getHomepage())
-                .keywords(manifest.getKeywords())
-                .license(manifest.getLicense())
-                .dist(PublishableManifest.Dist.builder()
-                        .fileCount(archiveDetails.getFilecount())
-                        .integrity(archiveDetails.getIntegrity())
-                        .shasum(archiveDetails.getShasum())
-                        .unpackedSize(archiveDetails.getUnpackedSize())
-                        .tarball(tarballUri)
-                        .build())
+    private Publish.Manifest buildPublishableManifest(Manifest manifest,
+                                                         PublishableProject.CompressedArchiveDetails archiveDetails) {
+        return Publish.Manifest.newBuilder()
+                .setOrganizationId(manifest.getOrganization())
+                .setProjectId(manifest.getName())
+                .setDescription(manifest.getDescription())
+                .setVersion(manifest.getVersion().toString())
+                .addAllDependencies(manifest.getDependencies()
+                        .getValues()
+                        .entrySet()
+                        .stream()
+                        .map(entry -> Publish.Dependency.newBuilder()
+                                .setPackageId(entry.getKey().toString())
+                                .setSource(entry.getValue().toString())
+                                .build())
+                        .collect(Collectors.toList()))
+                .setReadme(manifest.getReadme())
+                .setHomepage(manifest.getHomepage().toString())
+                .setLicense(manifest.getLicense())
+                .addAllKeywords(manifest.getKeywords())
                 .build();
-    }
-
-    private AggregatedManifest buildManifest(PublishableManifest manifest,
-                                             PublishableProject.CompressedArchiveDetails archiveDetails) {
-        // TODO fetch existing first, so we can mergeOver with this...
-        // because the manifest will be the root manifest of all versions,
-        // and the "versions" is really where the unique versions will be.
-        // this is really a sort of patch operation under the hood
-
-        Coordinate id = new Coordinate(manifest.getOrganization(), manifest.getName());
-
-        AggregatedManifest.Attachment tarAttachment;
-        try {
-            tarAttachment = AggregatedManifest.Attachment.of(archiveDetails.getLocation().toFile());
-        } catch (IOException e) {
-            String message = "Failed to build publishable manifest.";
-            logger.error(message, e);
-            throw new RuntimeException(message, e);
-        }
-
-        // TODO patch this later, doing a GET first and merging this onto that.
-        //  When we do that, make sure the new revision isn't already published?
-        AggregatedManifest.AggregatedManifestBuilder builder = AggregatedManifest.builder()
-                .description(manifest.getDescription())
-                .id(id.toString())
-                .name(id.getProjectId())
-                .org(id.getOrganizationId())
-                .readme(manifest.getReadme())
-                .version(manifest.getVersion())
-                .distTags(ImmutableMap.of())
-                .versions(ImmutableMap.of(
-                        manifest.getVersion(),
-                        manifest))
-                .attachments(ImmutableMap.of(
-                        RegistryUtils.createTarballName(id, manifest.getVersion()),
-                        tarAttachment));
-
-        return builder.build();
     }
 }

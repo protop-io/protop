@@ -11,7 +11,7 @@ description = "Protop CLI"
 
 allprojects {
     group = "io.protop"
-    version = "0.7.1"
+    version = "0.8.0"
 
     apply plugin: "java"
 
@@ -19,6 +19,11 @@ allprojects {
         mavenLocal()
         mavenCentral()
     }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_13
+    targetCompatibility = JavaVersion.VERSION_13
 }
 
 subprojects {
@@ -32,6 +37,7 @@ subprojects {
         implementation "io.reactivex.rxjava2:rxjava:2.2.17"
         
         compileOnly "org.projectlombok:lombok:$lombokVersion"
+        compileOnly "javax.annotation:javax.annotation-api:1.3.2"
 
         annotationProcessor "org.projectlombok:lombok:$lombokVersion"
 

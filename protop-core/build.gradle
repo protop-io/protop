@@ -1,6 +1,40 @@
+plugins {
+    id "com.google.protobuf" version "0.8.12"
+    id "io.protop" version "0.2.0"
+}
+
 dependencies {
     implementation "org.apache.httpcomponents:httpclient:4.5.11"
     implementation "org.apache.httpcomponents:httpmime:4.5.11"
     implementation "org.apache.commons:commons-compress:1.19"
     implementation "org.eclipse.jgit:org.eclipse.jgit:5.7.0.202003110725-r"
+    implementation "io.grpc:grpc-stub:1.26.0"
+    implementation "io.grpc:grpc-protobuf:1.26.0"
+}
+
+protop {
+    useLinks = true
+}
+
+sourceSets {
+    main {
+        proto {
+            srcDirs += protop.path
+        }
+        java {
+            srcDirs 'build/generated/source/proto/main/grpc'
+            srcDirs 'build/generated/source/proto/main/java'
+        }
+    }
+}
+
+protobuf {
+    protoc { artifact = "com.google.protobuf:protoc:3.12.3" }
+    plugins {
+        grpc { artifact = "io.grpc:protoc-gen-grpc-java:1.30.0" }
+    }
+    generateProtoTasks {
+        all()*.plugins { grpc {} }
+        all()*.dependsOn { protopSync }
+    }
 }
