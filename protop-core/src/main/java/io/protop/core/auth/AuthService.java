@@ -3,7 +3,7 @@ package io.protop.core.auth;
 import io.reactivex.Completable;
 import io.reactivex.Maybe;
 
-import java.net.URI;
+import java.net.URL;
 
 public interface AuthService<T extends Credentials> {
 
@@ -19,7 +19,9 @@ public interface AuthService<T extends Credentials> {
      * @param registry the registry to forget.
      * @return completable object.
      */
-    public Completable forget(URI registry);
+    public Completable forget(URL registry);
 
-    public Maybe<AuthToken> getStoredToken(URI registry);
+    public Maybe<AuthToken> getStoredToken(URL registry);
+
+    public Maybe<AuthToken> getOrCreateToken(URL registry);
 }

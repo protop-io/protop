@@ -9,7 +9,6 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 
 import java.io.IOException;
-import java.net.URI;
 import java.net.URL;
 import java.util.Enumeration;
 import java.util.Optional;
@@ -21,8 +20,7 @@ public final class Environment {
 
     private static final Logger logger = Logger.getLogger(Environment.class);
 
-    public static URI UNIVERSAL_DEFAULT_REGISTRY = URI.create(
-            "https://registry.protop.io");
+    public static String UNIVERSAL_DEFAULT_REGISTRY = "https://registry.protop.io";
 
     private static final String JAR_MANIFEST_NAME = "META-INF/MANIFEST.MF";
     private static final String PROTOP_VERSION_NAME = "Protop-Version";

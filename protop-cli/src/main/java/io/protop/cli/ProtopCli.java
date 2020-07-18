@@ -23,7 +23,7 @@ import picocli.CommandLine.Option;
                 Init.class,
                 // These are orphaned features for now; to use during development,
                 //  simply uncomment them.
-//                Publish.class,
+                Publish.class,
 //                Login.class,
 //                Logout.class,
                 Link.class,

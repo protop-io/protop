@@ -13,12 +13,11 @@ import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpPut;
-import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 
-import java.net.URI;
-import java.net.URISyntaxException;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.nio.file.Path;
 
 public class BasicAuthService implements AuthService<BasicCredentials> {
@@ -37,6 +36,12 @@ public class BasicAuthService implements AuthService<BasicCredentials> {
     }
 
     @Override
+    public Maybe<AuthToken> getOrCreateToken(URL registry) {
+        return getStoredToken(registry)
+                .switchIfEmpty(Maybe.just(new AuthToken(registry, "TODO")));
+    }
+
+    @Override
     public Completable authorize(BasicCredentials credentials) {
         return Completable.create(emitter -> {
             CredentialStore credentialStore = loadCredentialStore();
@@ -46,7 +51,7 @@ public class BasicAuthService implements AuthService<BasicCredentials> {
             HttpClient client = HttpUtils.createHttpClient();
 
             String body = objectMapper.writeValueAsString(credentials);
-            HttpPut put = new HttpPut(createLoginUri(credentials));
+            HttpPut put = new HttpPut(createLoginUri(credentials).toURI());
             put.setEntity(new StringEntity(body));
 
             HttpResponse response = client.execute(put);
@@ -73,7 +78,7 @@ public class BasicAuthService implements AuthService<BasicCredentials> {
     }
 
     @Override
-    public Maybe<AuthToken> getStoredToken(URI registry) {
+    public Maybe<AuthToken> getStoredToken(URL registry) {
         return Maybe.fromCallable(() -> {
             CredentialStore credentialStore = loadCredentialStore();
             return credentialStore.get(registry).orElse(null);
@@ -81,7 +86,7 @@ public class BasicAuthService implements AuthService<BasicCredentials> {
     }
 
     @Override
-    public Completable forget(URI registry) {
+    public Completable forget(URL registry) {
         return Completable.create(emitter -> {
             CredentialStore credentialStore = loadCredentialStore();
             credentialStore.remove(registry);
@@ -99,10 +104,10 @@ public class BasicAuthService implements AuthService<BasicCredentials> {
                 .blockingGet(new CredentialStore());
     }
 
-    private URI createLoginUri(BasicCredentials credentials) throws URISyntaxException {
-        return new URIBuilder(credentials.getRegistry())
-                .setPath(credentials.getRegistry().getPath()
-                        +  "/-/user/org.couchdb.user:" + credentials.getUsername())
-                .build();
+    private URL createLoginUri(BasicCredentials credentials) throws MalformedURLException {
+        return credentials.getRegistry();
+//                .setPath(credentials.getRegistry().getPath()
+//                        +  "/TODO/TODO:" + credentials.getUsername())
+//                .build();
     }
 }

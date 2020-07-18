@@ -32,6 +32,10 @@ public class Version implements RevisionSource, Comparable<Version> {
         }
     }
 
+    public static Version of(String value) {
+        return new Version(value);
+    }
+
     @Override
     public int compareTo(Version o) {
         return value.compareTo(o.value);

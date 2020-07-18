@@ -1,7 +1,7 @@
 package io.protop.core.cache;
 
 import io.protop.core.logs.Logger;
-import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.PackageId;
 import io.protop.core.manifest.Manifest;
 import io.protop.core.manifest.ManifestNotFound;
 import io.protop.core.manifest.revision.GitSource;
@@ -25,13 +25,13 @@ public class GitCache {
 
     private static final Logger logger = Logger.getLogger(GitCache.class);
 
-    private final Map<Coordinate, Map<GitSource, Map.Entry<Version, Path>>> projects;
+    private final Map<PackageId, Map<GitSource, Map.Entry<Version, Path>>> projects;
 
     public static Single<GitCache> load() {
         Path cacheDirectory = Storage.pathOf(Storage.GlobalDirectory.GIT_CACHE);
 
         // This is mutable so we can update it as we cache new dependencies.
-        Map<Coordinate, Map<GitSource, Map.Entry<Version, Path>>> projects = new HashMap<>();
+        Map<PackageId, Map<GitSource, Map.Entry<Version, Path>>> projects = new HashMap<>();
 
         return Single.fromCallable(() -> {
             Files.list(cacheDirectory).forEach(p -> memoizeProjects(projects, p));
@@ -39,7 +39,7 @@ public class GitCache {
         });
     }
 
-    private static void memoizeProjects(Map<Coordinate, Map<GitSource, Map.Entry<Version, Path>>> memo, Path path) {
+    private static void memoizeProjects(Map<PackageId, Map<GitSource, Map.Entry<Version, Path>>> memo, Path path) {
         if (!Files.isDirectory(path)) {
             return;
         }
@@ -50,7 +50,7 @@ public class GitCache {
         try {
             Files.list(path).forEach(projectDir -> {
                 if (Files.isDirectory(projectDir)) {
-                    Coordinate coordinate = new Coordinate(orgName, projectDir.toFile().getName());
+                    PackageId packageId = new PackageId(orgName, projectDir.toFile().getName());
 
                     Map<GitSource, Map.Entry<Version, Path>> revisions = new HashMap<>();
                     try {
@@ -67,7 +67,7 @@ public class GitCache {
                                 logger.warn("Manifest not found in supposed git repo; skipping {}.", fileName);
                             }
                         });
-                        memo.put(coordinate, revisions);
+                        memo.put(packageId, revisions);
                     } catch (IOException e) {
                         handleError(e);
                     }

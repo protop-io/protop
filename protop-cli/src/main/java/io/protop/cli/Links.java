@@ -71,7 +71,7 @@ public class Links implements Runnable {
                             total.set(prevTotal + 1);
                             logger.always(String.format(
                                     "  - %s (%s)",
-                                    detail.getCoordinate(),
+                                    detail.getPackageId(),
                                     detail.getPath()));
                         },
                         err -> {

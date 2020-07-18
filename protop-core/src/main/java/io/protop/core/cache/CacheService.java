@@ -1,7 +1,7 @@
 package io.protop.core.cache;
 
 import io.protop.core.logs.Logger;
-import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.PackageId;
 import io.protop.core.manifest.revision.Version;
 import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageService;
@@ -33,11 +33,11 @@ public class CacheService {
     /**
      * Cache g-zipped response from registry.
      */
-    public Single<Path> cacheFromRegistry(Coordinate coordinate, Version version, InputStream tarball) {
+    public Single<Path> cacheFromRegistry(PackageId packageId, Version version, InputStream tarball) {
         return Single.create(emitter -> {
-            logger.info("Caching {}.", coordinate);
+            logger.info("Caching {}.", packageId);
             try {
-                Path versionPath = resolveVersionPath(coordinate, version);
+                Path versionPath = resolveVersionPath(packageId, version);
                 unlock(versionPath);
 
                 // write the tarball to revision directory
@@ -45,14 +45,12 @@ public class CacheService {
                 TarArchiveInputStream tis = new TarArchiveInputStream(gis);
 
                 TarArchiveEntry entry = tis.getNextTarEntry();
-                logger.info("First entry: ", entry);
                 while (Objects.nonNull(entry)) {
                     Path path = versionPath.resolve(entry.getName());
-                    logger.info("Writing {}.", path.getFileName());
                     if (entry.isDirectory()) {
                         continue;
                     } else {
-                        Files.createFile(path);
+                        new File(path.getParent().toUri()).mkdirs();
                         IOUtils.copy(tis, new FileOutputStream(path.toFile()));
                     }
                     entry = tis.getNextTarEntry();
@@ -67,10 +65,12 @@ public class CacheService {
         });
     }
 
-    private Path resolveVersionPath(Coordinate coordinate, Version version) throws IOException {
+    private Path resolveVersionPath(PackageId packageId, Version version) throws IOException {
         Path cache = Storage.pathOf(Storage.GlobalDirectory.CACHE);
+        logger.info("Resolving version path");
 
-        Path orgPath = cache.resolve(coordinate.getOrganizationId());
+        Path orgPath = cache.resolve(packageId.getOrganization());
+        unlock(orgPath.getParent());
         if (!Files.isDirectory(orgPath)) {
             if (Files.exists(orgPath)) {
                 Files.delete(orgPath);
@@ -78,7 +78,7 @@ public class CacheService {
             Files.createDirectory(orgPath);
         }
 
-        Path projectPath = orgPath.resolve(coordinate.getProjectId());
+        Path projectPath = orgPath.resolve(packageId.getProject());
         if (!Files.isDirectory(projectPath)) {
             if (Files.exists(projectPath)) {
                 Files.delete(projectPath);
@@ -93,6 +93,7 @@ public class CacheService {
             }
             Files.createDirectory(versionPath);
         }
+        lock(orgPath.getParent());
         return versionPath;
     }
 

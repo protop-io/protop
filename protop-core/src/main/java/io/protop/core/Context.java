@@ -28,7 +28,7 @@ public class Context {
     private static final Logger logger = Logger.getLogger(Context.class);
 
     private static final RuntimeConfiguration defaultRc = RuntimeConfiguration.builder()
-            .repositoryUri(Environment.UNIVERSAL_DEFAULT_REGISTRY)
+            .repositoryUrl(Environment.UNIVERSAL_DEFAULT_REGISTRY)
             .build();
 
     @NotNull

@@ -10,30 +10,30 @@ import java.util.Map;
 
 @Getter
 @EqualsAndHashCode
-public class Coordinate {
+public class PackageId {
 
     private static final String SLASH = "/";
 
-    private final String organizationId;
-    private final String projectId;
+    private final String organization;
+    private final String project;
 
     @JsonCreator
-    Coordinate(String value) {
+    PackageId(String value) {
         this(splitNamesFrom(value));
     }
 
-    public Coordinate(String organizationId, String projectId) {
-        this.organizationId = organizationId;
-        this.projectId = projectId;
+    public PackageId(String organization, String project) {
+        this.organization = organization;
+        this.project = project;
     }
 
-    Coordinate(Map.Entry<String, String> pair) {
-        this.organizationId = pair.getKey();
-        this.projectId = pair.getValue();
+    PackageId(Map.Entry<String, String> pair) {
+        this.organization = pair.getKey();
+        this.project = pair.getValue();
     }
 
-    public static Coordinate from(String value) {
-        return new Coordinate(value);
+    public static PackageId from(String value) {
+        return new PackageId(value);
     }
 
     private static Map.Entry<String, String> splitNamesFrom(String value) {
@@ -55,6 +55,6 @@ public class Coordinate {
 
     @Override
     public String toString() {
-        return String.join(SLASH, organizationId, projectId);
+        return String.join(SLASH, organization, project);
     }
 }

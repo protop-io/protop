@@ -9,7 +9,6 @@ import io.protop.core.auth.BasicCredentials;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
 import io.protop.core.storage.StorageService;
-import io.protop.utils.UriUtils;
 import org.jline.reader.LineReader;
 import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.MaskingCallback;
@@ -18,7 +17,7 @@ import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.ParentCommand;
 
-import java.net.URI;
+import java.net.URL;
 
 
 @Command(name = "login",
@@ -60,9 +59,9 @@ public class Login implements Runnable {
                     .parser(new DefaultParser())
                     .build();
 
-            URI registryUri = Strings.isNullOrEmpty(registry)
+            URL registryUrl = new URL(Strings.isNullOrEmpty(registry)
                     ? Environment.UNIVERSAL_DEFAULT_REGISTRY
-                    : UriUtils.fromString(registry);
+                    : registry);
 
             if (Strings.isNullOrEmpty(username)) {
                 username = promptUsername(reader);
@@ -73,7 +72,7 @@ public class Login implements Runnable {
             }
 
             BasicCredentials basicCredentials = BasicCredentials.builder()
-                    .registry(registryUri)
+                    .registry(registryUrl)
                     .username(username)
                     .password(password)
                     .build();

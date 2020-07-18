@@ -5,13 +5,13 @@ import io.protop.core.Context;
 import io.protop.core.RuntimeConfiguration;
 import io.protop.core.auth.AuthService;
 import io.protop.core.auth.BasicAuthService;
+import io.protop.core.grpc.GrpcService;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
 import io.protop.core.publish.ProjectPublisher;
 import io.protop.core.publish.ProjectPublisherImpl;
 import io.protop.core.publish.PublishableProject;
 import io.protop.core.storage.StorageService;
-import io.protop.utils.UriUtils;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.Parameters;
@@ -46,14 +46,13 @@ public class Publish implements Runnable {
         Logs.enableIf(protop.isDebugMode());
         new ExceptionHandler().run(() -> {
             RuntimeConfiguration cliRc = RuntimeConfiguration.builder()
-                    .repositoryUri(Optional.ofNullable(registry)
-                            .map(UriUtils::fromString)
-                            .orElse(null))
+                    .repositoryUrl(Optional.ofNullable(registry).orElse(null))
                     .build();
             Context context = Context.from(location, cliRc);
             StorageService storageService = new StorageService();
             AuthService authService = new BasicAuthService(storageService);
-            ProjectPublisher projectPublisher = new ProjectPublisherImpl(context, authService);
+            GrpcService grpcService = new GrpcService(authService);
+            ProjectPublisher projectPublisher = new ProjectPublisherImpl(context, authService, grpcService);
 
             PublishableProject project = PublishableProject.from(location);
 

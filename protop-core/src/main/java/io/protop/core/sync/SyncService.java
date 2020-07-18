@@ -4,8 +4,9 @@ import com.google.common.collect.ImmutableList;
 import io.protop.core.Context;
 import io.protop.core.auth.AuthService;
 import io.protop.core.cache.CacheService;
+import io.protop.core.grpc.GrpcService;
 import io.protop.core.logs.Logger;
-import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.PackageId;
 import io.protop.core.manifest.DependencyMap;
 import io.protop.core.manifest.revision.RevisionSource;
 import io.protop.core.storage.Storage;
@@ -34,14 +35,17 @@ public class SyncService {
     private final StorageService storageService;
     private final Context context;
     private final CacheService cacheService;
+    private final GrpcService grpcService;
 
     public SyncService(AuthService<?> authService,
                        StorageService storageService,
-                       Context context) {
+                       Context context,
+                       GrpcService grpcService) {
         this.authService = authService;
         this.storageService = storageService;
         this.context = context;
         this.cacheService = new CacheService(storageService);
+        this.grpcService = grpcService;
     }
 
     /**
@@ -59,16 +63,17 @@ public class SyncService {
             }
 
             // Currently always use cached/external dependencies.
-            resolvers.add(new ExternalDependencyResolver(authService, storageService, cacheService, context));
+            resolvers.add(new ExternalDependencyResolver(authService, storageService, cacheService, context,
+                    grpcService));
 
             DependencyMap dependencyMap = Optional.ofNullable(context.getManifest().getDependencies())
                     .orElseGet(DependencyMap::new);
-            AtomicReference<Map<Coordinate, RevisionSource>> unresolvedDependencies = new AtomicReference<>(
+            AtomicReference<Map<PackageId, RevisionSource>> unresolvedDependencies = new AtomicReference<>(
                     dependencyMap.getValues());
 
             resolvers.forEach(resolver -> {
                 emitter.onNext(new Syncing(resolver.getShortDescription()));
-                Map<Coordinate, RevisionSource> next = resolver.resolve(
+                Map<PackageId, RevisionSource> next = resolver.resolve(
                         dependenciesDir,
                         unresolvedDependencies.get())
                         .blockingGet();
@@ -77,7 +82,7 @@ public class SyncService {
 
             mergeDepsToPath(dependenciesDir);
 
-            Map<Coordinate, RevisionSource> ultimatelyUnresolved = unresolvedDependencies.get();
+            Map<PackageId, RevisionSource> ultimatelyUnresolved = unresolvedDependencies.get();
             if (!ultimatelyUnresolved.isEmpty()) {
                 emitter.onError(new IncompleteSync(ultimatelyUnresolved));
             } else {

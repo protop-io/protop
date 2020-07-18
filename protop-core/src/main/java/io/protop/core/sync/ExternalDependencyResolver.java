@@ -1,41 +1,47 @@
 package io.protop.core.sync;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import io.grpc.Channel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.stub.StreamObserver;
 import io.protop.core.Context;
-import io.protop.core.Environment;
 import io.protop.core.auth.AuthService;
 import io.protop.core.cache.CacheService;
 import io.protop.core.cache.ExternalDependencyCache;
 import io.protop.core.cache.GitCache;
 import io.protop.core.error.PackageNotFound;
+import io.protop.core.grpc.AuthTokenCallCredentials;
+import io.protop.core.grpc.GrpcService;
 import io.protop.core.logs.Logger;
-import io.protop.core.manifest.*;
+import io.protop.core.manifest.DependencyMap;
+import io.protop.core.manifest.Manifest;
+import io.protop.core.manifest.ManifestNotFound;
+import io.protop.core.manifest.PackageId;
 import io.protop.core.manifest.revision.GitSource;
 import io.protop.core.manifest.revision.RevisionSource;
 import io.protop.core.manifest.revision.Version;
 import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageService;
-import io.protop.utils.HttpUtils;
-import io.protop.utils.RegistryUtils;
+import io.protop.registry.domain.Package;
+import io.protop.registry.services.RetrievalServiceGrpc;
+import io.protop.registry.services.Retrieve;
 import io.reactivex.Maybe;
 import io.reactivex.Single;
 import lombok.AllArgsConstructor;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.util.EntityUtils;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.errors.GitAPIException;
 
-import javax.annotation.Nullable;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
-import java.net.URI;
+import java.net.MalformedURLException;
 import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -56,6 +62,19 @@ public class ExternalDependencyResolver implements DependencyResolver {
     private final StorageService storageService;
     private final CacheService cacheService;
     private final Context context;
+    private final GrpcService grpcService;
+
+    public ExternalDependencyResolver(AuthService<?> authService, StorageService storageService,
+                                      CacheService cacheService, Context context, GrpcService grpcService) {
+        this.authService = authService;
+        this.storageService = storageService;
+        this.cacheService = cacheService;
+        this.context = context;
+        this.grpcService = grpcService;
+        this.channels = new ConcurrentHashMap<>();
+    }
+
+    private ConcurrentMap<URL, Channel> channels;
 
     @Override
     public String getShortDescription() {
@@ -63,8 +82,8 @@ public class ExternalDependencyResolver implements DependencyResolver {
     }
 
     @Override
-    public Single<Map<Coordinate, RevisionSource>> resolve(
-            Path dependencyDir, Map<Coordinate, RevisionSource> projectDependencies) {
+    public Single<Map<PackageId, RevisionSource>> resolve(
+            Path dependencyDir, Map<PackageId, RevisionSource> projectDependencies) {
 
         if (projectDependencies.isEmpty()) {
             return Single.just(projectDependencies);
@@ -72,12 +91,12 @@ public class ExternalDependencyResolver implements DependencyResolver {
 
         return Single.create(emitter -> {
             try {
-                Map<Coordinate, Map<GitSource, Map.Entry<Version, Path>>> preexistingGitCache = loadGitCache();
-                Map<Coordinate, Map<Version, Path>> preexistingRegistryCache = loadVersionCache();
-                Map<Coordinate, RevisionSource> aggregatedDependencies = aggregateDependencies(
+                Map<PackageId, Map<GitSource, Map.Entry<Version, Path>>> preexistingGitCache = loadGitCache();
+                Map<PackageId, Map<Version, Path>> preexistingRegistryCache = loadVersionCache();
+                Map<PackageId, RevisionSource> aggregatedDependencies = aggregateDependencies(
                         projectDependencies, preexistingRegistryCache);
 
-                Set<Coordinate> resolved = new HashSet<>();
+                Set<PackageId> resolved = new HashSet<>();
                 aggregatedDependencies.forEach((coordinate, revisionSource) -> {
                     try {
                         Map<GitSource, Map.Entry<Version, Path>> cachedGitRepos = preexistingGitCache.computeIfAbsent(coordinate, c -> new HashMap<>());
@@ -91,7 +110,10 @@ public class ExternalDependencyResolver implements DependencyResolver {
                                 path.set(cachedVersions.get(version));
                             } else {
                                 logger.info("Not found; attempting to retrieve from registry.");
-                                retrieveFromRegistryAndCache(coordinate, version).ifPresent(path::set);
+                                retrieveFromRegistryAndCache(coordinate, version)
+                                        .map(Optional::ofNullable)
+                                        .blockingGet()
+                                        .ifPresent(path::set);
                             }
                         } else if (revisionSource instanceof GitSource) {
                             GitSource gitSource = (GitSource) revisionSource;
@@ -130,19 +152,26 @@ public class ExternalDependencyResolver implements DependencyResolver {
         });
     }
 
-    private Map<Coordinate, Map<Version, Path>> loadVersionCache() {
+    private Channel getChannel(URL url) {
+        return channels.computeIfAbsent(url, v -> ManagedChannelBuilder
+                .forAddress(url.getHost(), url.getPort())
+                .usePlaintext()
+                .build());
+    }
+
+    private Map<PackageId, Map<Version, Path>> loadVersionCache() {
         return ExternalDependencyCache.load().blockingGet()
                 .getProjects();
     }
 
-    private Map<Coordinate, Map<GitSource, Map.Entry<Version, Path>>> loadGitCache() {
+    private Map<PackageId, Map<GitSource, Map.Entry<Version, Path>>> loadGitCache() {
         return GitCache.load().blockingGet()
                 .getProjects();
     }
 
-    private Map<Coordinate, Map<Version, Manifest>> extractRegistryManifestsFromCache(
-            Map<Coordinate, Map<Version, Path>> versionCache) {
-        Map<Coordinate, Map<Version, Manifest>> output = new HashMap<>();
+    private Map<PackageId, Map<Version, Manifest>> extractRegistryManifestsFromCache(
+            Map<PackageId, Map<Version, Path>> versionCache) {
+        Map<PackageId, Map<Version, Manifest>> output = new HashMap<>();
 
         versionCache.forEach((coordinate, versionPathMap) -> {
             Map<Version, Manifest> versionManifestMap = new HashMap<>();
@@ -157,9 +186,9 @@ public class ExternalDependencyResolver implements DependencyResolver {
         return output;
     }
 
-    private Map<Coordinate, Map<GitSource, Map.Entry<Version, Manifest>>> extractGitUrlManifestsFromCache(
-            Map<Coordinate, Map<GitSource, Map.Entry<Version, Path>>> gitCache) {
-        Map<Coordinate, Map<GitSource, Map.Entry<Version, Manifest>>> output = new HashMap<>();
+    private Map<PackageId, Map<GitSource, Map.Entry<Version, Manifest>>> extractGitUrlManifestsFromCache(
+            Map<PackageId, Map<GitSource, Map.Entry<Version, Path>>> gitCache) {
+        Map<PackageId, Map<GitSource, Map.Entry<Version, Manifest>>> output = new HashMap<>();
 
         gitCache.forEach(((coordinate, gitUrlEntryMap) -> {
             Map<GitSource, Map.Entry<Version, Manifest>> gitManifestMap = new HashMap<>();
@@ -174,51 +203,48 @@ public class ExternalDependencyResolver implements DependencyResolver {
         return output;
     }
 
-    private Map<Coordinate, RevisionSource> aggregateDependencies(
-            Map<Coordinate, RevisionSource> projectDependencies,
-            Map<Coordinate, Map<Version, Path>> registryCache) {
+    private Map<PackageId, RevisionSource> aggregateDependencies(
+            Map<PackageId, RevisionSource> projectDependencies,
+            Map<PackageId, Map<Version, Path>> registryCache) {
 
-        Map<Coordinate, Map<Version, Manifest>> registryManifestsForReference =
+        Map<PackageId, Map<Version, Manifest>> registryManifestsForReference =
                 extractRegistryManifestsFromCache(registryCache);
-        Map<Coordinate, Map.Entry<RevisionSource, Manifest>> aggregated = new HashMap<>();
-        Queue<Map.Entry<Coordinate, RevisionSource>> unchecked =
+        Map<PackageId, Map.Entry<RevisionSource, Manifest>> aggregated = new HashMap<>();
+        Queue<Map.Entry<PackageId, RevisionSource>> unchecked =
                 new LinkedList<>(projectDependencies.entrySet());
 
         while (!unchecked.isEmpty()) {
-            Map.Entry<Coordinate, RevisionSource> entry = unchecked.poll();
-            Coordinate coordinate = entry.getKey();
+            Map.Entry<PackageId, RevisionSource> entry = unchecked.poll();
+            PackageId packageId = entry.getKey();
             RevisionSource revisionSource = entry.getValue();
 
             AtomicReference<Manifest> manifest = new AtomicReference<>();
             if (revisionSource instanceof Version) {
                 Map<Version, Manifest> knownRegistryRevisions = registryManifestsForReference.computeIfAbsent(
-                        coordinate, c -> new HashMap<>());
+                        packageId, c -> new HashMap<>());
                 Version version = (Version) revisionSource;
                 if (knownRegistryRevisions.containsKey(version)) {
                     manifest.set(knownRegistryRevisions.get(version));
                 } else {
                     // try to retrieve the manifest from the network
-                    AggregatedManifest aggregatedManifest = retrieveAggregatedManifestFromRegistry(coordinate)
-                            .blockingGet();
-                    Map<Version, Manifest> aggregatedVersions = aggregatedManifest.getVersions();
-                    registryManifestsForReference.put(coordinate, aggregatedVersions);
-                    if (aggregatedVersions.containsKey(version)) {
-                        manifest.set(aggregatedVersions.get(version));
-                    }
+                    retrieveManifest(packageId, version).map(Optional::ofNullable).blockingGet().ifPresent(found -> {
+                        manifest.set(found);
+                        knownRegistryRevisions.put(version, found);
+                    });
                 }
             } else if (revisionSource instanceof GitSource) {
                 GitSource gitSource = (GitSource) revisionSource;
-                Manifest gitRepoManifest = retrieveGitProjectManifest(coordinate, gitSource)
+                Manifest gitRepoManifest = retrieveGitProjectManifest(packageId, gitSource)
                         .blockingGet();
                 manifest.set(gitRepoManifest);
             }
 
             Manifest resolvedManifest = manifest.get();
             if (Objects.isNull(resolvedManifest)) {
-                throw new PackageNotFound(coordinate, revisionSource);
+                throw new PackageNotFound(packageId, revisionSource);
             } else {
-                if (!aggregated.containsKey(coordinate) || (compare(aggregated.get(coordinate).getValue(), resolvedManifest) < 0)) {
-                    aggregated.put(coordinate, Map.entry(revisionSource, resolvedManifest));
+                if (!aggregated.containsKey(packageId) || (compare(aggregated.get(packageId).getValue(), resolvedManifest) < 0)) {
+                    aggregated.put(packageId, Map.entry(revisionSource, resolvedManifest));
                     DependencyMap dependencyMap = resolvedManifest.getDependencies();
                     if (Objects.nonNull(dependencyMap)) {
                         unchecked.addAll(dependencyMap.getValues().entrySet());
@@ -232,13 +258,13 @@ public class ExternalDependencyResolver implements DependencyResolver {
         // After aggregating the dependencies the first time, we need to clear out unused dependencies
         // because there may be extras left behind from the dependency map of a version less than the
         // the version that was ultimately required.
-        Map<Coordinate, RevisionSource> reduced = new HashMap<>();
-        Queue<Coordinate> reducible = new LinkedList<>(projectDependencies.keySet());
+        Map<PackageId, RevisionSource> reduced = new HashMap<>();
+        Queue<PackageId> reducible = new LinkedList<>(projectDependencies.keySet());
 
         while (!reducible.isEmpty()) {
-            Coordinate coordinate = reducible.poll();
-            Map.Entry<RevisionSource, Manifest> details = aggregated.get(coordinate);
-            reduced.put(coordinate, details.getKey());
+            PackageId packageId = reducible.poll();
+            Map.Entry<RevisionSource, Manifest> details = aggregated.get(packageId);
+            reduced.put(packageId, details.getKey());
             DependencyMap dependencyMap = details.getValue().getDependencies();
             if (!Objects.isNull(dependencyMap)) {
                 reducible.addAll(dependencyMap.getValues().keySet());
@@ -254,39 +280,103 @@ public class ExternalDependencyResolver implements DependencyResolver {
         return a.getVersion().compareTo(b.getVersion());
     }
 
-    private Maybe<AggregatedManifest> retrieveAggregatedManifestFromRegistry(Coordinate coordinate) {
-        return Maybe.fromCallable(() -> {
-            URI uri = RegistryUtils.createManifestUri(getRegistryUri(), coordinate);
-            HttpResponse response = createHttpClient()
-                    .execute(new HttpGet(uri));
+    private URL getRegistryUrl() throws MalformedURLException {
+        return new URL(context.getRc().getRepositoryUrl());
+    }
 
-            int statusCode = response.getStatusLine().getStatusCode();
-            if (statusCode != HttpStatus.SC_OK) {
-                logger.error("Did not find project in registry: " + coordinate);
-                // TODO handle different responses better
-            } else {
-                try {
-                    ObjectMapper objectMapper = Environment.getInstance().getObjectMapper();
-                    String stringEntity = EntityUtils.toString(response.getEntity());
-                    return objectMapper.readValue(stringEntity, AggregatedManifest.class);
-                } catch (Exception e) {
-                    logger.error("Failed to parse manifest for " + coordinate, e);
+    private RetrievalServiceGrpc.RetrievalServiceStub createRetrievalServiceStub(URL url) {
+        return RetrievalServiceGrpc.newStub(getChannel(url));
+    }
+
+    private Maybe<Manifest> retrieveManifest(PackageId packageId, Version version) {
+        return Maybe.create(emitter -> {
+            logger.info("Retrieving package manifest: {} {}", packageId, version);
+            URL retrievalURL = getRegistryUrl();
+            AuthTokenCallCredentials credentials = grpcService.getAuthCredentials(retrievalURL);
+
+            RetrievalServiceGrpc.RetrievalServiceStub retrievalServiceStub = createRetrievalServiceStub(retrievalURL)
+                    .withCallCredentials(credentials);
+
+            retrievalServiceStub.retrieveMetadata(Retrieve.PackageQuery.newBuilder()
+                    .setPackageId(packageId.toString())
+                    .setVersion(version.toString())
+                    .build(), new StreamObserver<>() {
+                @Override
+                public void onNext(Package.PackageMetadata value) {
+                    logger.info("Received package metadata...");
+                    emitter.onSuccess(Manifest.builder()
+                            .organization(value.getOrganization())
+                            .name(value.getProject())
+                            .version(Version.of(value.getVersion()))
+                            .dependencies(DependencyMap.from(value.getDependenciesList()))
+                            .build());
                 }
-            }
 
-            return null;
+                @Override
+                public void onError(Throwable t) {
+                    emitter.onError(t);
+                }
+
+                @Override
+                public void onCompleted() {
+                    logger.info("Did not find this package's manifest in the registry.");
+                    emitter.onComplete();
+                }
+            });
         });
     }
 
-    private Maybe<Manifest> retrieveGitProjectManifest(Coordinate coordinate, GitSource gitSource) {
+    private Maybe<Path> retrieveFromRegistryAndCache(PackageId packageId, Version version) throws IOException, URISyntaxException {
+        return Maybe.create(emitter -> {
+            logger.info("Retrieving package: {} {}", packageId, version);
+            URL retrievalURL = getRegistryUrl();
+            AuthTokenCallCredentials credentials = grpcService.getAuthCredentials(retrievalURL);
+
+            RetrievalServiceGrpc.RetrievalServiceStub retrievalServiceStub = createRetrievalServiceStub(retrievalURL)
+                    .withCallCredentials(credentials);
+
+            AtomicReference<ByteArrayOutputStream> chunks = new AtomicReference<>(new ByteArrayOutputStream());
+
+            retrievalServiceStub.retrieve(Retrieve.PackageQuery.newBuilder()
+                    .setPackageId(packageId.toString())
+                    .setVersion(version.toString())
+                    .build(), new StreamObserver<>() {
+                @Override
+                public void onNext(io.protop.registry.data.Package.DataChunk value) {
+                    try {
+                        chunks.get().write(value.getData().toByteArray());
+                    } catch (IOException e) {
+                        // TODO wrap this exception?
+                        emitter.onError(e);
+                    }
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    // TODO wrap this exception?
+                    emitter.onError(t);
+                }
+
+                @Override
+                public void onCompleted() {
+                    cacheService.cacheFromRegistry(
+                            packageId, version, new ByteArrayInputStream(chunks.get().toByteArray()))
+                            .subscribe(emitter::onSuccess, emitter::onError)
+                            .dispose();
+                }
+            });
+        });
+    }
+
+    private Maybe<Manifest> retrieveGitProjectManifest(PackageId packageId, GitSource gitSource) {
         return Maybe.fromCallable(() -> {
             cacheService.unlock(Storage.GlobalDirectory.GIT_CACHE);
 
             Path orgPath = Storage.pathOf(Storage.GlobalDirectory.GIT_CACHE)
-                    .resolve(coordinate.getOrganizationId());
+                    .resolve(packageId.getOrganization());
             storageService.createDirectoryIfNotExists(orgPath);
 
-            Path projectPath = orgPath.resolve(coordinate.getProjectId());
+            Path projectPath = orgPath.resolve(packageId.getProject());
             storageService.createDirectoryIfNotExists(projectPath);
 
             Path gitUrlPath = projectPath.resolve(gitSource.getUrlEncoded());
@@ -297,7 +387,8 @@ public class ExternalDependencyResolver implements DependencyResolver {
 
             if (!gitUrlDirectory.exists() || refreshGitSources) {
                 if (gitUrlDirectory.exists()) {
-                    // TODO it might be nice to pull in changes if the directory exists, rather than always wipe it out and then clone
+                    // TODO it might be nice to pull in changes if the directory exists,
+                    //  rather than always wipe it out and then clone
                     final List<Path> pathsToDelete = Files.walk(gitUrlPath)
                             .sorted(Comparator.reverseOrder())
                             .collect(Collectors.toList());
@@ -307,7 +398,7 @@ public class ExternalDependencyResolver implements DependencyResolver {
                 }
 
                 try {
-                    logger.info("Retrieving {} {}.", coordinate, gitSource);
+                    logger.info("Retrieving {} {}.", packageId, gitSource);
                     Git.cloneRepository()
                             .setURI(gitSource.getRawUrl())
                             .setDirectory(gitUrlDirectory)
@@ -315,7 +406,7 @@ public class ExternalDependencyResolver implements DependencyResolver {
                             .call();
                 } catch (GitAPIException e) {
                     // TODO rethrow?
-                    String message = String.format("Failed to retrieve %s from %s.", coordinate, gitSource);
+                    String message = String.format("Failed to retrieve %s from %s.", packageId, gitSource);
                     logger.error(message, e);
                 }
             }
@@ -324,7 +415,6 @@ public class ExternalDependencyResolver implements DependencyResolver {
             Optional<String> branchName = Optional.ofNullable(gitSource.getBranchName());
             try {
                 if (branchName.isPresent()) {
-                    logger.info("git directory: " + gitUrlDirectory);
                     Git git = Git.open(gitUrlDirectory);
                     git.checkout()
                             .setCreateBranch(false)
@@ -333,7 +423,7 @@ public class ExternalDependencyResolver implements DependencyResolver {
                 }
             } catch (GitAPIException e) {
                 String message = String.format("Failed to find branch \"%s\" in Git repo for %s: %s.",
-                        branchName.get(), coordinate, gitSource);
+                        branchName.get(), packageId, gitSource);
                 logger.error(message, e);
             }
 
@@ -343,51 +433,19 @@ public class ExternalDependencyResolver implements DependencyResolver {
         });
     }
 
-    private Optional<Path> retrieveFromRegistryAndCache(Coordinate coordinate, Version version) throws IOException, URISyntaxException {
-        URI uri = RegistryUtils.createTarballUri(
-                getRegistryUri(), coordinate, version);
-        HttpResponse response = createHttpClient()
-                .execute(new HttpGet(uri));
-
-        int statusCode = response.getStatusLine().getStatusCode();
-        if (statusCode != HttpStatus.SC_OK) {
-            logger.error("Failed to retrieve package. URI: {}. Status code: {}.",
-                    uri, statusCode);
-            // TODO handle better, i.e. map to a specific exception based on the response/code from the registry.
-            return Optional.empty();
-        } else {
-            Path path = cacheService.cacheFromRegistry(coordinate, version, response.getEntity().getContent())
-                    .blockingGet();
-
-            logger.info("Happy path achieved.");
-            return Optional.of(path);
-        }
-    }
-
-    private Optional<Path> retrieveFromGitCache(Coordinate coordinate, GitSource gitSource) {
+    private Optional<Path> retrieveFromGitCache(PackageId packageId, GitSource gitSource) {
         GitCache gitCache = GitCache.load().blockingGet();
 
-        Map<Coordinate, Map<GitSource, Map.Entry<Version, Path>>> projects = gitCache.getProjects();
+        Map<PackageId, Map<GitSource, Map.Entry<Version, Path>>> projects = gitCache.getProjects();
 
-        if (projects.containsKey(coordinate)) {
-            Map<GitSource, Map.Entry<Version, Path>> revisions = projects.get(coordinate);
+        if (projects.containsKey(packageId)) {
+            Map<GitSource, Map.Entry<Version, Path>> revisions = projects.get(packageId);
             if (revisions.containsKey(gitSource)) {
                 return Optional.of(revisions.get(gitSource).getValue());
             }
         }
 
-        logger.info("Project {} from {} not found in cache.", coordinate, gitSource);
+        logger.info("Project {} from {} not found in cache.", packageId, gitSource);
         return Optional.empty();
-    }
-
-    @Nullable
-    private URI getRegistryUri() {
-        return context.getRc().getRepositoryUri();
-    }
-
-    private HttpClient createHttpClient() {
-        return Optional.ofNullable(authService.getStoredToken(getRegistryUri()).blockingGet())
-                .map(HttpUtils::createHttpClientWithToken)
-                .orElseGet(HttpUtils::createHttpClient);
     }
 }

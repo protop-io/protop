@@ -1,6 +1,6 @@
 package io.protop.core.sync;
 
-import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.PackageId;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -12,15 +12,15 @@ public class SyncUtils {
         // no op
     }
 
-    public static void createSymbolicLink(Path dependencyDir, Coordinate coordinate, Path srcDir) throws IOException {
-        Path orgPath = dependencyDir.resolve(coordinate.getOrganizationId());
+    public static void createSymbolicLink(Path dependencyDir, PackageId packageId, Path srcDir) throws IOException {
+        Path orgPath = dependencyDir.resolve(packageId.getOrganization());
 
         if (!Files.isDirectory(orgPath)) {
             Files.deleteIfExists(orgPath);
             Files.createDirectory(orgPath);
         }
 
-        Path projectPath = orgPath.resolve(coordinate.getProjectId());
+        Path projectPath = orgPath.resolve(packageId.getProject());
         if (Files.exists(projectPath)) {
             if (Files.isSymbolicLink(projectPath)) {
                 return;

@@ -1,8 +1,8 @@
 package io.protop.core.auth;
 
-import java.net.URI;
+import java.net.URL;
 
 public interface Credentials {
 
-    URI getRegistry();
+    URL getRegistry();
 }
