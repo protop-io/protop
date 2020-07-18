@@ -6,8 +6,8 @@ import io.protop.core.auth.AuthService;
 import io.protop.core.cache.CacheService;
 import io.protop.core.grpc.GrpcService;
 import io.protop.core.logs.Logger;
-import io.protop.core.manifest.PackageId;
 import io.protop.core.manifest.DependencyMap;
+import io.protop.core.manifest.PackageId;
 import io.protop.core.manifest.revision.RevisionSource;
 import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageService;
@@ -16,7 +16,6 @@ import io.protop.core.sync.status.Syncing;
 import io.reactivex.Observable;
 import lombok.Getter;
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.filefilter.TrueFileFilter;
 
 import java.io.File;
 import java.io.IOException;
@@ -25,7 +24,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.stream.Collectors;
 
 public class SyncService {
 
@@ -89,17 +87,6 @@ public class SyncService {
                 emitter.onComplete();
             }
         });
-    }
-
-    private List<File> getProtoFilesInDir(Path dir) {
-        Collection<File> files = FileUtils.listFiles(
-                dir.toFile(), TrueFileFilter.INSTANCE, TrueFileFilter.INSTANCE);
-
-        return files.stream()
-                // For now, assume this is the only extension. If it becomes necessary later, we can
-                // explore allowing custom extensions/patterns to be provided.
-                .filter(file -> file.getName().endsWith(".proto"))
-                .collect(Collectors.toCollection(ArrayList::new));
     }
 
     @Getter
