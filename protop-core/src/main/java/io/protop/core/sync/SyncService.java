@@ -1,5 +1,6 @@
 package io.protop.core.sync;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
 import io.protop.core.Context;
 import io.protop.core.auth.AuthService;
@@ -7,22 +8,29 @@ import io.protop.core.cache.CacheService;
 import io.protop.core.logs.Logger;
 import io.protop.core.manifest.Coordinate;
 import io.protop.core.manifest.DependencyMap;
+import io.protop.core.manifest.Manifest;
 import io.protop.core.manifest.revision.RevisionSource;
 import io.protop.core.storage.Storage;
 import io.protop.core.storage.StorageService;
 import io.protop.core.sync.status.SyncStatus;
 import io.protop.core.sync.status.Syncing;
 import io.reactivex.Observable;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.TrueFileFilter;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.FileAlreadyExistsException;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -97,20 +105,34 @@ public class SyncService {
                 .collect(Collectors.toCollection(ArrayList::new));
     }
 
+    @VisibleForTesting
+    @EqualsAndHashCode
     @Getter
-    private static class DirectoryWithFiles {
-        private final Map<String, File> files = new HashMap<>();
-        private final Map<String, DirectoryWithFiles> subdirectories = new HashMap<>();
+    static class DirectoryWithFiles {
+        private final Map<String, FileWithRootDir> files;
+        private final Map<String, DirectoryWithFiles> subdirectories;
+
+        DirectoryWithFiles() {
+            this(new HashMap<>(), new HashMap<>());
+        }
+
+        @VisibleForTesting
+        DirectoryWithFiles(final Map<String, FileWithRootDir> files, final Map<String, DirectoryWithFiles> subdirectories) {
+            this.files = files;
+            this.subdirectories = subdirectories;
+        }
     }
 
     private List<File> validProtoFilesOrDirectories(File[] files) {
         List<String> invalidDirectoryNames = ImmutableList.of("node_modules");
         List<File> validFiles = new ArrayList<>();
         for (File file : files) {
-            if (!file.getName().startsWith(".") && !file.isHidden()) {
-                if (file.isDirectory() && !invalidDirectoryNames.contains(file.getName())) {
+            final String fileName = file.getName();
+
+            if (!fileName.startsWith(".") && !file.isHidden()) {
+                if (file.isDirectory() && !invalidDirectoryNames.contains(fileName)) {
                     validFiles.add(file);
-                } else if (file.isFile() && file.getName().endsWith(".proto")) {
+                } else if (file.isFile() && fileName.endsWith(".proto")) {
                     validFiles.add(file);
                 }
             }
@@ -121,16 +143,32 @@ public class SyncService {
     /**
      * Filter the children directories and files and add to the given tree.
      */
-    private void filterValidChildren(DirectoryWithFiles directoryWithFiles, File path) throws FileAlreadyExistsException {
+    private void filterValidChildren(
+            final DirectoryWithFiles directoryWithFiles,
+            final File project) throws FileAlreadyExistsException {
+        final Path rootDir = Manifest
+                .from(project)
+                .map(Manifest::getRootDir)
+                .orElse(Path.of(""));
+
+        filterValidChildren(directoryWithFiles, project, rootDir);
+    }
+
+    @VisibleForTesting
+    void filterValidChildren(
+            final DirectoryWithFiles directoryWithFiles,
+            final File path,
+            final Path rootDir) throws FileAlreadyExistsException {
         if (path.isDirectory()) {
-            File[] children = Optional.ofNullable(path.listFiles())
+            final File[] children = Optional.ofNullable(path.listFiles())
                     .orElse(new File[]{});
+
             for (File child : validProtoFilesOrDirectories(children)) {
                 if (child.isDirectory()) {
                     DirectoryWithFiles childDirectory = directoryWithFiles.subdirectories.computeIfAbsent(
                             child.getName(),
                             name -> new DirectoryWithFiles());
-                    filterValidChildren(childDirectory, child);
+                    filterValidChildren(childDirectory, child, rootDir);
                     // If the child directory ended up with nothing in it, remove it.
                     // This isn't the most efficient thing, but it does save us from having to traverse the
                     // entire tree again in order to remove empty directories.
@@ -145,7 +183,7 @@ public class SyncService {
                                 path.getName());
                         throw new FileAlreadyExistsException(message);
                     } else {
-                        directoryWithFiles.files.put(child.getName(), child);
+                        directoryWithFiles.files.put(child.getName(), new FileWithRootDir(rootDir, child));
                     }
                 }
             }
@@ -157,25 +195,33 @@ public class SyncService {
     /**
      * Create subdirectories and symlink files in the given parent.
      */
-    private void mergeChildrenToParentDirectory(File parent, DirectoryWithFiles children) throws IOException {
-        for (Map.Entry<String, File> fileEntry : children.getFiles().entrySet()) {
-            Files.createSymbolicLink(parent.toPath().resolve(fileEntry.getKey()),
-                    fileEntry.getValue().toPath());
+    private void mergeChildrenToParentDirectory(
+            final Path protopPathDir, final Path parent, final DirectoryWithFiles children) throws IOException {
+        for (Map.Entry<String, FileWithRootDir> fileEntry : children.getFiles().entrySet()) {
+            final Path link = parent.resolve(fileEntry.getKey());
+
+            fileEntry.getValue().createSymbolicLink(protopPathDir, link);
         }
+
         for (Map.Entry<String, DirectoryWithFiles> directoryEntry : children.getSubdirectories().entrySet()) {
-            Path created = Files.createDirectory(parent.toPath().resolve(directoryEntry.getKey()));
-            mergeChildrenToParentDirectory(created.toFile(), directoryEntry.getValue());
+            final Path subdirectory = parent.resolve(directoryEntry.getKey());
+
+            mergeChildrenToParentDirectory(protopPathDir, subdirectory, directoryEntry.getValue());
         }
     }
 
-    private void mergeDepsToPath(Path depsDir) throws IOException {
-        DirectoryWithFiles depsTree = new DirectoryWithFiles();
-        File[] orgs = Optional.ofNullable(depsDir.toFile().listFiles())
+    private void mergeDepsToPath(final Path depsDir) throws IOException {
+        final DirectoryWithFiles depsTree = new DirectoryWithFiles();
+        final File[] orgs = Optional
+                .ofNullable(depsDir.toFile().listFiles())
                 .orElse(new File[]{});
+
         for (File org : orgs) {
             if (org.isDirectory()) {
-                File[] projects = Optional.ofNullable(org.listFiles())
+                final File[] projects = Optional
+                        .ofNullable(org.listFiles())
                         .orElse(new File[]{});
+
                 for (File project : projects) {
                     // For every project, traverse its items and add to the dependency tree.
                     if (project.isDirectory()) {
@@ -185,8 +231,8 @@ public class SyncService {
             }
         }
 
-        Path mergedDepsPath = resolveEmptySubDir(Storage.ProjectDirectory.PATH);
-        mergeChildrenToParentDirectory(mergedDepsPath.toFile(), depsTree);
+        final Path mergedDepsPath = resolveEmptySubDir(Storage.ProjectDirectory.PATH);
+        mergeChildrenToParentDirectory(mergedDepsPath, mergedDepsPath, depsTree);
     }
 
     /**
