@@ -30,8 +30,7 @@ class FileWithRootDir {
         final Path linkWithoutRootDir = protopPathDir.resolve(linkRelative);
 
         Files.createDirectories(linkWithoutRootDir.getParent());
-        Files.createSymbolicLink(
-                linkWithoutRootDir,
-                target);
+        Files.deleteIfExists(linkWithoutRootDir);
+        Files.createSymbolicLink(linkWithoutRootDir, target);
     }
 }

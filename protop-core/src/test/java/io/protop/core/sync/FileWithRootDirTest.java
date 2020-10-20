@@ -21,7 +21,7 @@ class FileWithRootDirTest {
 
     @Test
     @DisplayName("Should create symlink using null rootDir.")
-    public void shouldCreateSymlinkUsingNullRootDir(@TempDir final Path workspace) throws Exception {
+    public void shouldCreateSymlinkUsingNullRootDir() throws Exception {
         final var fileWithRootDir = new FileWithRootDir(null, protopDeps.resolve("org/name/package/file.proto"));
 
         fileWithRootDir.createSymbolicLink(protopPath, protopPath.resolve("package/file.proto"));
@@ -32,10 +32,23 @@ class FileWithRootDirTest {
 
     @Test
     @DisplayName("Should create symlink using rootDir.")
-    public void shouldCreateSymlinkUsingRootDir(@TempDir final Path workspace) throws Exception {
+    public void shouldCreateSymlinkUsingRootDir() throws Exception {
         final var rootDir = Path.of("src/main/proto");
         final var fileWithRootDir = new FileWithRootDir(rootDir, protopDeps.resolve("org/name/src/main/proto/package/file.proto"));
 
+        fileWithRootDir.createSymbolicLink(protopPath, protopPath.resolve("src/main/proto/package/file.proto"));
+
+        assertThat(protopPath.resolve("package/file.proto"))
+                .isSymbolicLink();
+    }
+
+    @Test
+    @DisplayName("Symlink creation should be idempotent.")
+    public void symlinkCreationShouldBeIdempotent() throws Exception {
+        final var rootDir = Path.of("src/main/proto");
+        final var fileWithRootDir = new FileWithRootDir(rootDir, protopDeps.resolve("org/name/src/main/proto/package/file.proto"));
+
+        fileWithRootDir.createSymbolicLink(protopPath, protopPath.resolve("src/main/proto/package/file.proto"));
         fileWithRootDir.createSymbolicLink(protopPath, protopPath.resolve("src/main/proto/package/file.proto"));
 
         assertThat(protopPath.resolve("package/file.proto"))

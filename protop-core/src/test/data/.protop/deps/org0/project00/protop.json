@@ -1,0 +1,8 @@
+{
+  "organization" : "org1",
+  "name" : "project10",
+  "version" : "0.1.0",
+
+  "root-dir": "src/main/proto"
+}
+

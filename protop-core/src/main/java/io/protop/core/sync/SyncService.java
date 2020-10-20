@@ -195,7 +195,7 @@ public class SyncService {
     /**
      * Create subdirectories and symlink files in the given parent.
      */
-    private void mergeChildrenToParentDirectory(
+    private static void mergeChildrenToParentDirectory(
             final Path protopPathDir, final Path parent, final DirectoryWithFiles children) throws IOException {
         for (Map.Entry<String, FileWithRootDir> fileEntry : children.getFiles().entrySet()) {
             final Path link = parent.resolve(fileEntry.getKey());
@@ -210,7 +210,8 @@ public class SyncService {
         }
     }
 
-    private void mergeDepsToPath(final Path depsDir) throws IOException {
+    @VisibleForTesting
+    void mergeDepsToPath(final Path depsDir) throws IOException {
         final DirectoryWithFiles depsTree = new DirectoryWithFiles();
         final File[] orgs = Optional
                 .ofNullable(depsDir.toFile().listFiles())
