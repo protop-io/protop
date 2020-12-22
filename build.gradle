@@ -62,6 +62,9 @@ def DIST_JAR_NAME = "protop.jar"
 def MANIFEST_NAME = "MANIFEST.MF"
 
 task distFatJar(type: Jar) {
+    description = 'Assembles a jar archive containing all dependencies.'
+    group = 'Distribution'
+
     archiveFileName = DIST_JAR_NAME
 
     manifest {
@@ -85,6 +88,29 @@ task distFatJar(type: Jar) {
                 collect { zipTree(it) }
     }
     exclude 'META-INF/*.RSA', 'META-INF/*.SF','META-INF/*.DSA'
+}
+
+tasks.register('executable') {
+    description = 'Assembles an executable from the fat jar.'
+    group = 'Build'
+
+    dependsOn distFatJar
+
+    final outputFile = file("${buildDir}/bin/protop")
+
+    inputs.files tasks.distFatJar.outputs.files.getSingleFile()
+    outputs.file outputFile
+
+    doFirst {
+        mkdir outputFile.getParent()
+    }
+
+    doLast {
+        outputFile.text = '#!/bin/bash\n'
+        outputFile.append('exec java -jar "$0" "$@"\n')
+        outputFile.append(inputs.files.first().readBytes())
+        outputFile.setExecutable(true)
+    }
 }
 
 plugins.withType(DistributionPlugin) {
