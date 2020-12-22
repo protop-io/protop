@@ -40,8 +40,16 @@ public class RuntimeConfiguration {
     @Nullable
     private final Boolean refreshGitSources;
 
+    @Nullable
+    private final String username;
+
+    @Nullable
+    private final String password;
+
     public static RuntimeConfiguration empty() {
         return new RuntimeConfiguration(
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -75,6 +83,8 @@ public class RuntimeConfiguration {
                 .publishRepositoryUrl(props.getProperty("publish.registry"))
                 .syncRepositoryUrl(props.getProperty("sync.registry"))
                 .refreshGitSources(Boolean.valueOf(props.getProperty("git.refresh")))
+                .username(props.getProperty("username"))
+                .password(props.getProperty("password"))
                 .build();
     }
 
@@ -88,6 +98,8 @@ public class RuntimeConfiguration {
                 .publishRepositoryUrl(resolveAsap(getPublishRepositoryUrl(), other.getPublishRepositoryUrl()))
                 .syncRepositoryUrl(resolveAsap(getSyncRepositoryUrl(), other.getSyncRepositoryUrl()))
                 .refreshGitSources(resolveAsap(getRefreshGitSources(), other.getRefreshGitSources()))
+                .username(resolveAsap(getUsername(), other.getUsername()))
+                .password(resolveAsap(getPassword(), other.getPassword()))
                 .build();
     }
 
@@ -97,5 +109,15 @@ public class RuntimeConfiguration {
         } else {
             return Objects.nonNull(a) ? a : b;
         }
+    }
+
+    @Nullable
+    public String getPublishRepositoryUrl() {
+        return Optional.ofNullable(publishRepositoryUrl).orElse(repositoryUrl);
+    }
+
+    @Nullable
+    public String getSyncRepositoryUrl() {
+        return Optional.ofNullable(syncRepositoryUrl).orElse(repositoryUrl);
     }
 }

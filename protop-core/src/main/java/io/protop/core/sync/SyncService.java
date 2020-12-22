@@ -29,13 +29,13 @@ public class SyncService {
 
     private static final Logger logger = Logger.getLogger(SyncService.class);
 
-    private final AuthService<?> authService;
+    private final AuthService authService;
     private final StorageService storageService;
     private final Context context;
     private final CacheService cacheService;
     private final GrpcService grpcService;
 
-    public SyncService(AuthService<?> authService,
+    public SyncService(AuthService authService,
                        StorageService storageService,
                        Context context,
                        GrpcService grpcService) {

@@ -5,9 +5,9 @@ plugins {
 
 dependencies {
     implementation "org.apache.httpcomponents:httpclient:4.5.11"
-    implementation "org.apache.httpcomponents:httpmime:4.5.11"
     implementation "org.apache.commons:commons-compress:1.19"
     implementation "org.eclipse.jgit:org.eclipse.jgit:5.7.0.202003110725-r"
+    implementation 'org.apache.maven.artifact:maven-artifact:3.0-alpha-1' // For ComparableVersion
     implementation "io.grpc:grpc-stub:1.26.0"
     implementation "io.grpc:grpc-protobuf:1.26.0"
     runtimeOnly "io.grpc:grpc-netty-shaded:1.26.0"

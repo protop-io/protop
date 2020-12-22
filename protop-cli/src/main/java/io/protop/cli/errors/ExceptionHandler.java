@@ -45,7 +45,8 @@ public final class ExceptionHandler implements ServiceExceptionConsumer {
         if (thrown instanceof ServiceException) {
             handle((ServiceException) thrown);
         } else {
-            Optional.ofNullable(thrown.getMessage()).ifPresent(logger::always);
+            Optional.ofNullable(thrown.getMessage()).ifPresent(message ->
+                    logger.always(String.format("Failed with the following message: %s", message)));
             if (Logs.areEnabled()) {
                 logger.error("Caught unexpected exception", thrown);
             }

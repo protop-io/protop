@@ -1,18 +1,27 @@
 package io.protop.core.grpc;
 
-import io.protop.core.auth.AuthService;
-import io.protop.core.auth.AuthToken;
+import io.grpc.Channel;
+import io.grpc.ManagedChannelBuilder;
 import lombok.AllArgsConstructor;
 
 import java.net.URL;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 @AllArgsConstructor
 public class GrpcService {
 
-    private final AuthService<?> authService;
+    private final ConcurrentMap<URL, Channel> channels;
 
-    public AuthTokenCallCredentials getAuthCredentials(URL url) {
-        AuthToken token = authService.getOrCreateToken(url).blockingGet();
-        return new AuthTokenCallCredentials(token.getValue());
+
+    public GrpcService() {
+        this.channels = new ConcurrentHashMap<>();
+    }
+
+    public Channel getChannel(URL url) {
+        return channels.computeIfAbsent(url, v -> ManagedChannelBuilder
+                .forAddress(url.getHost(), url.getPort())
+                .usePlaintext()
+                .build());
     }
 }

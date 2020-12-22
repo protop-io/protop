@@ -4,7 +4,6 @@ import io.protop.cli.errors.ExceptionHandler;
 import io.protop.core.Context;
 import io.protop.core.RuntimeConfiguration;
 import io.protop.core.auth.AuthService;
-import io.protop.core.auth.BasicAuthService;
 import io.protop.core.grpc.GrpcService;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
@@ -18,7 +17,6 @@ import picocli.CommandLine.Parameters;
 import picocli.CommandLine.ParentCommand;
 
 import java.nio.file.Path;
-import java.util.Optional;
 
 @Command(name = "publish",
         description = "(experimental) Publish project to the registry.")
@@ -41,17 +39,33 @@ public class Publish implements Runnable {
             defaultValue = "")
     private String registry;
 
+    @Option(names = {"-u", "--username"},
+            description = "Username",
+            required = false,
+            arity = "0..1",
+            defaultValue = "")
+    private String username;
+
+    @Option(names = {"-p", "--password"},
+            description = "Password",
+            required = false,
+            arity = "0..1",
+            defaultValue = "")
+    private String password;
+
     @Override
     public void run() {
         Logs.enableIf(protop.isDebugMode());
         new ExceptionHandler().run(() -> {
             RuntimeConfiguration cliRc = RuntimeConfiguration.builder()
-                    .repositoryUrl(Optional.ofNullable(registry).orElse(null))
+                    .repositoryUrl(registry)
+                    .username(username)
+                    .password(password)
                     .build();
             Context context = Context.from(location, cliRc);
             StorageService storageService = new StorageService();
-            AuthService authService = new BasicAuthService(storageService);
-            GrpcService grpcService = new GrpcService(authService);
+            GrpcService grpcService = new GrpcService();
+            AuthService authService = new AuthService(storageService, grpcService, context);
             ProjectPublisher projectPublisher = new ProjectPublisherImpl(context, authService, grpcService);
 
             PublishableProject project = PublishableProject.from(location);

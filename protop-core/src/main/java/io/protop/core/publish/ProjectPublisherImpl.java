@@ -2,7 +2,6 @@ package io.protop.core.publish;
 
 import com.google.protobuf.ByteString;
 import io.grpc.Channel;
-import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import io.protop.core.Context;
 import io.protop.core.RuntimeConfiguration;
@@ -31,7 +30,7 @@ public class ProjectPublisherImpl implements ProjectPublisher {
     private static final Logger logger = Logger.getLogger(ProjectPublisherImpl.class);
 
     private final Context context;
-    private final AuthService<?> authService;
+    private final AuthService authService;
     private final GrpcService grpcService;
 
     private URL getPublishURL() {
@@ -50,26 +49,22 @@ public class ProjectPublisherImpl implements ProjectPublisher {
         }
     }
 
-    private PublishServiceGrpc.PublishServiceStub createPublishServiceStub(URL publishURL) {
-        Channel channel = ManagedChannelBuilder
-                .forAddress(publishURL.getHost(), publishURL.getPort())
-                .usePlaintext()
-                .build();
-        return PublishServiceGrpc.newStub(channel);
+    private PublishServiceGrpc.PublishServiceStub createPublishServiceStub() {
+        URL publishURL = getPublishURL();
+        AuthTokenCallCredentials credentials = authService.getAuthTokenCallCredentials(publishURL);
+        Channel channel = grpcService.getChannel(publishURL);
+        return PublishServiceGrpc.newStub(channel)
+                .withCallCredentials(credentials);
     }
 
     @Override
     public Completable publish(PublishableProject project) {
         return Completable.create(emitter -> {
-            URL publishURI = getPublishURL();
-            AuthTokenCallCredentials credentials = grpcService.getAuthCredentials(publishURI);
-
             Manifest manifest = project.getManifest();
             PublishableProject.CompressedArchiveDetails archiveDetails = project.compressAndZip();
             Publish.Manifest publishableManifest = buildPublishableManifest(manifest, archiveDetails);
 
-            PublishServiceGrpc.PublishServiceStub publishServiceStub = createPublishServiceStub(publishURI)
-                    .withCallCredentials(credentials);
+            PublishServiceGrpc.PublishServiceStub publishServiceStub = createPublishServiceStub();
             StreamObserver<Publish.PublishRequest> requestObserver = publishServiceStub.publish(
                     createResponseObserver(emitter));
 

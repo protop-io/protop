@@ -1,7 +1,6 @@
 package io.protop.core.sync;
 
 import io.grpc.Channel;
-import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
 import io.protop.core.Context;
 import io.protop.core.auth.AuthService;
@@ -40,8 +39,6 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -58,23 +55,11 @@ public class ExternalDependencyResolver implements DependencyResolver {
 
     private static final Logger logger = Logger.getLogger(ExternalDependencyResolver.class);
 
-    private final AuthService<?> authService;
+    private final AuthService authService;
     private final StorageService storageService;
     private final CacheService cacheService;
     private final Context context;
     private final GrpcService grpcService;
-
-    public ExternalDependencyResolver(AuthService<?> authService, StorageService storageService,
-                                      CacheService cacheService, Context context, GrpcService grpcService) {
-        this.authService = authService;
-        this.storageService = storageService;
-        this.cacheService = cacheService;
-        this.context = context;
-        this.grpcService = grpcService;
-        this.channels = new ConcurrentHashMap<>();
-    }
-
-    private ConcurrentMap<URL, Channel> channels;
 
     @Override
     public String getShortDescription() {
@@ -150,13 +135,6 @@ public class ExternalDependencyResolver implements DependencyResolver {
                 emitter.onError(t);
             }
         });
-    }
-
-    private Channel getChannel(URL url) {
-        return channels.computeIfAbsent(url, v -> ManagedChannelBuilder
-                .forAddress(url.getHost(), url.getPort())
-                .usePlaintext()
-                .build());
     }
 
     private Map<PackageId, Map<Version, Path>> loadVersionCache() {
@@ -281,21 +259,22 @@ public class ExternalDependencyResolver implements DependencyResolver {
     }
 
     private URL getRegistryUrl() throws MalformedURLException {
-        return new URL(context.getRc().getRepositoryUrl());
+        return new URL(Optional.ofNullable(context.getRc().getRepositoryUrl()).orElse(""));
     }
 
-    private RetrievalServiceGrpc.RetrievalServiceStub createRetrievalServiceStub(URL url) {
-        return RetrievalServiceGrpc.newStub(getChannel(url));
+    private RetrievalServiceGrpc.RetrievalServiceStub createRetrievalServiceStub() throws MalformedURLException {
+        URL retrievalURL = getRegistryUrl();
+        AuthTokenCallCredentials credentials = authService.getAuthTokenCallCredentials(retrievalURL);
+        Channel channel = grpcService.getChannel(retrievalURL);
+        // TODO skip call credentials if --no-auth flag passed
+        return RetrievalServiceGrpc.newStub(channel)
+                .withCallCredentials(credentials);
     }
 
     private Maybe<Manifest> retrieveManifest(PackageId packageId, Version version) {
         return Maybe.create(emitter -> {
             logger.info("Retrieving package manifest: {} {}", packageId, version);
-            URL retrievalURL = getRegistryUrl();
-            AuthTokenCallCredentials credentials = grpcService.getAuthCredentials(retrievalURL);
-
-            RetrievalServiceGrpc.RetrievalServiceStub retrievalServiceStub = createRetrievalServiceStub(retrievalURL)
-                    .withCallCredentials(credentials);
+            RetrievalServiceGrpc.RetrievalServiceStub retrievalServiceStub = createRetrievalServiceStub();
 
             retrievalServiceStub.retrieveMetadata(Retrieve.PackageQuery.newBuilder()
                     .setPackageId(packageId.toString())
@@ -329,11 +308,7 @@ public class ExternalDependencyResolver implements DependencyResolver {
     private Maybe<Path> retrieveFromRegistryAndCache(PackageId packageId, Version version) throws IOException, URISyntaxException {
         return Maybe.create(emitter -> {
             logger.info("Retrieving package: {} {}", packageId, version);
-            URL retrievalURL = getRegistryUrl();
-            AuthTokenCallCredentials credentials = grpcService.getAuthCredentials(retrievalURL);
-
-            RetrievalServiceGrpc.RetrievalServiceStub retrievalServiceStub = createRetrievalServiceStub(retrievalURL)
-                    .withCallCredentials(credentials);
+            RetrievalServiceGrpc.RetrievalServiceStub retrievalServiceStub = createRetrievalServiceStub();
 
             AtomicReference<ByteArrayOutputStream> chunks = new AtomicReference<>(new ByteArrayOutputStream());
 

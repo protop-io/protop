@@ -4,7 +4,6 @@ import io.protop.cli.errors.ExceptionHandler;
 import io.protop.core.Context;
 import io.protop.core.RuntimeConfiguration;
 import io.protop.core.auth.AuthService;
-import io.protop.core.auth.BasicAuthService;
 import io.protop.core.grpc.GrpcService;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
@@ -62,11 +61,11 @@ public class Sync implements Runnable {
             Context context = Context.from(location, cliRc);
 
             StorageService storageService = new StorageService();
-            AuthService<?> authService = new BasicAuthService(storageService);
+            GrpcService grpcService = new GrpcService();
+            AuthService authService = new AuthService(storageService, grpcService, context);
             DependencyResolutionConfiguration resolutionContext = DependencyResolutionConfiguration.builder()
                     .includesLinkedDependencies(includeLinkedDependencies)
                     .build();
-            GrpcService grpcService = new GrpcService(authService);
             SyncService syncService = new SyncService(authService, storageService, context, grpcService);
 
             syncService.sync(resolutionContext)

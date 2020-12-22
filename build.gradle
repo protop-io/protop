@@ -4,7 +4,8 @@ plugins {
 
 ext {
     slf4jVersion = "1.7.28"
-    lombokVersion = "1.18.10"
+    lombokVersion = "1.18.16"
+    jvmVersion = JavaVersion.VERSION_13
 }
 
 description = "Protop CLI"
@@ -22,8 +23,8 @@ allprojects {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_13
-    targetCompatibility = JavaVersion.VERSION_13
+    sourceCompatibility = jvmVersion
+    targetCompatibility = jvmVersion
 }
 
 subprojects {
@@ -45,6 +46,11 @@ subprojects {
     }
 
     tasks.withType(org.gradle.api.tasks.javadoc.Javadoc).all { enabled = false }
+
+    java {
+        sourceCompatibility = jvmVersion
+        targetCompatibility = jvmVersion
+    }
 }
 
 dependencies {

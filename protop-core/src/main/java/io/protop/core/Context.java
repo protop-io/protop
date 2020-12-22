@@ -8,6 +8,7 @@ import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
+import javax.annotation.Nullable;
 import javax.annotation.concurrent.Immutable;
 import javax.validation.constraints.NotNull;
 import java.nio.file.Path;
@@ -31,10 +32,10 @@ public class Context {
             .repositoryUrl(Environment.UNIVERSAL_DEFAULT_REGISTRY)
             .build();
 
-    @NotNull
+    @Nullable
     private final Path projectLocation;
 
-    @NotNull
+    @Nullable
     private final Manifest manifest;
 
     @NotNull
@@ -42,7 +43,7 @@ public class Context {
 
     public static Context from(@NotNull Path projectLocation, RuntimeConfiguration... rcs) {
         Manifest manifest = Manifest.from(projectLocation)
-                .orElseThrow(() -> new ManifestNotFound());
+                .orElseThrow(ManifestNotFound::new);
 
         List<RuntimeConfiguration> allRcs = new ArrayList<>(Arrays.asList(rcs));
         allRcs.add(RuntimeConfiguration.from(projectLocation)
@@ -52,6 +53,15 @@ public class Context {
         allRcs.add(defaultRc);
 
         return new Context(projectLocation, manifest, resolveRcs(allRcs));
+    }
+
+    public static Context from(RuntimeConfiguration... rcs) {
+        List<RuntimeConfiguration> allRcs = new ArrayList<>(Arrays.asList(rcs));
+        allRcs.add(RuntimeConfiguration.from(Storage.getHomePath())
+                .orElseGet(RuntimeConfiguration::empty));
+        allRcs.add(defaultRc);
+
+        return new Context(null, null, resolveRcs(allRcs));
     }
 
     private static RuntimeConfiguration resolveRcs(List<RuntimeConfiguration> rcs) {
