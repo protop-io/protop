@@ -4,14 +4,13 @@ import io.protop.cli.errors.ExceptionHandler;
 import io.protop.core.Context;
 import io.protop.core.RuntimeConfiguration;
 import io.protop.core.auth.AuthService;
-import io.protop.core.auth.BasicAuthService;
+import io.protop.core.grpc.GrpcService;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
 import io.protop.core.storage.StorageService;
 import io.protop.core.sync.DependencyResolutionConfiguration;
 import io.protop.core.sync.SyncService;
 import io.protop.core.sync.status.SyncStatus;
-import io.protop.utils.UriUtils;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.ParentCommand;
@@ -56,19 +55,18 @@ public class Sync implements Runnable {
             Path location = Path.of(".").toAbsolutePath();
 
             RuntimeConfiguration cliRc = RuntimeConfiguration.builder()
-                    .repositoryUri(Optional.ofNullable(registry)
-                            .map(UriUtils::fromString)
-                            .orElse(null))
+                    .repositoryUrl(Optional.ofNullable(registry).orElse(null))
                     .refreshGitSources(refreshGitSources)
                     .build();
             Context context = Context.from(location, cliRc);
 
             StorageService storageService = new StorageService();
-            AuthService<?> authService = new BasicAuthService(storageService);
+            GrpcService grpcService = new GrpcService();
+            AuthService authService = new AuthService(storageService, grpcService, context);
             DependencyResolutionConfiguration resolutionContext = DependencyResolutionConfiguration.builder()
                     .includesLinkedDependencies(includeLinkedDependencies)
                     .build();
-            SyncService syncService = new SyncService(authService, storageService, context);
+            SyncService syncService = new SyncService(authService, storageService, context, grpcService);
 
             syncService.sync(resolutionContext)
                     .doOnComplete(this::handleSuccess)

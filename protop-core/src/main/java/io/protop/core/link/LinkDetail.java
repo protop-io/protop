@@ -1,6 +1,6 @@
 package io.protop.core.link;
 
-import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.PackageId;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
@@ -10,6 +10,6 @@ import java.nio.file.Path;
 @AllArgsConstructor
 public class LinkDetail {
 
-    Coordinate coordinate;
+    PackageId packageId;
     Path path;
 }

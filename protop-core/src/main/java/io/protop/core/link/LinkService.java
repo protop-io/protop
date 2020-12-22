@@ -1,7 +1,7 @@
 package io.protop.core.link;
 
 import io.protop.core.logs.Logger;
-import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.PackageId;
 import io.protop.core.manifest.Manifest;
 import io.protop.core.publish.PublishableProject;
 import io.protop.core.storage.Storage;
@@ -19,8 +19,8 @@ public class LinkService {
 
     public void link(PublishableProject project) {
         try {
-            Coordinate coordinate = getCoordinate(project);
-            Path linkPath = getPathToLink(coordinate);
+            PackageId packageId = getCoordinate(project);
+            Path linkPath = getPathToLink(packageId);
             Files.deleteIfExists(linkPath);
             Files.createSymbolicLink(linkPath, project.getProjectLocation());
         } catch (IOException e) {
@@ -32,8 +32,8 @@ public class LinkService {
 
     public void unlink(PublishableProject project) {
         try {
-            Coordinate coordinate = getCoordinate(project);
-            Path linkPath = getPathToLink(coordinate);
+            PackageId packageId = getCoordinate(project);
+            Path linkPath = getPathToLink(packageId);
             Files.deleteIfExists(linkPath);
         } catch (IOException e) {
             String message = "Failed to unlink project.";
@@ -77,18 +77,18 @@ public class LinkService {
         });
     }
 
-    private Path getPathToLink(Coordinate coordinate) throws IOException {
+    private Path getPathToLink(PackageId packageId) throws IOException {
         Path linksDirectory = getLinksDirectory();
 
-        Path orgPath = linksDirectory.resolve(coordinate.getOrganizationId());
+        Path orgPath = linksDirectory.resolve(packageId.getOrganization());
         StorageUtils.createDirectoryIfNotExists(orgPath);
 
-        return orgPath.resolve(coordinate.getProjectId());
+        return orgPath.resolve(packageId.getProject());
     }
 
-    private Coordinate getCoordinate(PublishableProject project) {
+    private PackageId getCoordinate(PublishableProject project) {
         Manifest manifest = project.getManifest();
-        return new Coordinate(manifest.getOrganization(), manifest.getName());
+        return new PackageId(manifest.getOrganization(), manifest.getName());
     }
 
     private Path getLinksDirectory() {

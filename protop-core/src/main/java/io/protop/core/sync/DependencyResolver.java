@@ -1,6 +1,6 @@
 package io.protop.core.sync;
 
-import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.PackageId;
 import io.protop.core.manifest.revision.RevisionSource;
 import io.reactivex.Single;
 
@@ -18,6 +18,6 @@ public interface DependencyResolver {
      * Resolve dependencies.
      * @return unresolved dependencies.
      */
-    Single<Map<Coordinate, RevisionSource>> resolve(
-            Path dependencyDir, Map<Coordinate, RevisionSource> unresolvedDependencies);
+    Single<Map<PackageId, RevisionSource>> resolve(
+            Path dependencyDir, Map<PackageId, RevisionSource> unresolvedDependencies);
 }

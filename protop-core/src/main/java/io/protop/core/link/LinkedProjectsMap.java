@@ -1,7 +1,7 @@
 package io.protop.core.link;
 
 import io.protop.core.logs.Logger;
-import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.PackageId;
 import io.protop.core.storage.Storage;
 import io.reactivex.Single;
 import lombok.AccessLevel;
@@ -24,11 +24,11 @@ public class LinkedProjectsMap {
 
     private static final Logger logger = Logger.getLogger(LinkedProjectsMap.class);
 
-    private final Map<Coordinate, Path> projects;
+    private final Map<PackageId, Path> projects;
 
     public static Single<LinkedProjectsMap> load() {
         Path linksDirectory = Storage.pathOf(Storage.GlobalDirectory.LINKS);
-        Map<Coordinate, Path> projects = new HashMap<>();
+        Map<PackageId, Path> projects = new HashMap<>();
 
         return Single.fromCallable(() -> {
             Files.list(linksDirectory).forEach(p -> memoizeProjects(projects, p));
@@ -36,7 +36,7 @@ public class LinkedProjectsMap {
         });
     }
 
-    private static void memoizeProjects(Map<Coordinate, Path> memo, Path path) {
+    private static void memoizeProjects(Map<PackageId, Path> memo, Path path) {
         if (!Files.isDirectory(path)) {
             return;
         }
@@ -47,7 +47,7 @@ public class LinkedProjectsMap {
         try {
             Files.list(path).forEach(p -> {
                 if (Files.isSymbolicLink(p)) {
-                    Coordinate name = new Coordinate(orgName, p.toFile().getName());
+                    PackageId name = new PackageId(orgName, p.toFile().getName());
                     memo.put(name, p);
                 }
             });

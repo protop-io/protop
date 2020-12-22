@@ -15,6 +15,8 @@ import io.protop.core.storage.StorageException;
 import io.protop.core.sync.IncompleteSync;
 import io.protop.core.manifest.revision.InvalidVersionString;
 
+import java.util.Optional;
+
 /**
  * Handles service exceptions, which are fail-fast exceptions and often can be
  * thrown from different places.
@@ -42,15 +44,11 @@ public final class ExceptionHandler implements ServiceExceptionConsumer {
     private void handle(Throwable thrown) {
         if (thrown instanceof ServiceException) {
             handle((ServiceException) thrown);
-        } else if (thrown instanceof InvalidVersionString) {
-            handle((InvalidVersionString) thrown);
         } else {
-            // Fallback
-            if (!Logs.areEnabled()) {
-                logger.always("An unexpected error occurred.");
-                logger.always(RETRY_WITH_DEBUG);
-            } else {
-                logger.error("An unexpected error occurred.", thrown);
+            Optional.ofNullable(thrown.getMessage()).ifPresent(message ->
+                    logger.always(String.format("Failed with the following message: %s", message)));
+            if (Logs.areEnabled()) {
+                logger.error("Caught unexpected exception", thrown);
             }
         }
     }
