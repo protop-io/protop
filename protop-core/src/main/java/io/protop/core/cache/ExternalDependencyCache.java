@@ -1,7 +1,7 @@
 package io.protop.core.cache;
 
 import io.protop.core.logs.Logger;
-import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.PackageId;
 import io.protop.core.manifest.revision.InvalidVersionString;
 import io.protop.core.manifest.revision.Version;
 import io.protop.core.storage.Storage;
@@ -27,13 +27,13 @@ public class ExternalDependencyCache {
 
     private static final Logger logger = Logger.getLogger(ExternalDependencyCache.class);
 
-    private final Map<Coordinate, Map<Version, Path>> projects;
+    private final Map<PackageId, Map<Version, Path>> projects;
 
     public static Single<ExternalDependencyCache> load() {
         Path cacheDirectory = Storage.pathOf(Storage.GlobalDirectory.CACHE);
 
         // This is mutable so we can update it as we cache new dependencies.
-        Map<Coordinate, Map<Version, Path>> projects = new HashMap<>();
+        Map<PackageId, Map<Version, Path>> projects = new HashMap<>();
 
         return Single.fromCallable(() -> {
             Files.list(cacheDirectory).forEach(p -> memoizeProjects(projects, p));
@@ -41,7 +41,7 @@ public class ExternalDependencyCache {
         });
     }
 
-    private static void memoizeProjects(Map<Coordinate, Map<Version, Path>> memo, Path path) {
+    private static void memoizeProjects(Map<PackageId, Map<Version, Path>> memo, Path path) {
         if (!Files.isDirectory(path)) {
             return;
         }
@@ -52,7 +52,7 @@ public class ExternalDependencyCache {
         try {
             Files.list(path).forEach(projectDir -> {
                 if (Files.isDirectory(projectDir)) {
-                    Coordinate coordinate = new Coordinate(orgName, projectDir.toFile().getName());
+                    PackageId packageId = new PackageId(orgName, projectDir.toFile().getName());
 
                     Map<Version, Path> revisions = new HashMap<>();
                     try {
@@ -65,7 +65,7 @@ public class ExternalDependencyCache {
                                 logger.warn("Not a valid revision; skipping {}.", fileName);
                             }
                         });
-                        memo.put(coordinate, revisions);
+                        memo.put(packageId, revisions);
                     } catch (IOException e) {
                         handleError(e);
                     }

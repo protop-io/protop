@@ -2,16 +2,11 @@ package io.protop.cli;
 
 import com.google.common.base.Strings;
 import io.protop.cli.errors.ExceptionHandler;
-import io.protop.core.auth.AuthService;
-import io.protop.core.auth.BasicAuthService;
 import io.protop.core.logs.Logger;
 import io.protop.core.logs.Logs;
-import io.protop.core.storage.StorageService;
 import io.protop.utils.UriUtils;
 import org.jline.reader.LineReader;
-import org.jline.reader.LineReaderBuilder;
 import org.jline.reader.MaskingCallback;
-import org.jline.reader.impl.DefaultParser;
 import picocli.CommandLine.Command;
 import picocli.CommandLine.Option;
 import picocli.CommandLine.ParentCommand;
@@ -40,14 +35,14 @@ public class Logout implements Runnable {
         Logs.enableIf(protop.isDebugMode());
         new ExceptionHandler().run(() -> {
             if (Strings.isNullOrEmpty(registry)) {
-                LineReader reader = LineReaderBuilder.builder()
-                        .parser(new DefaultParser())
-                        .build();
-                URI registryUri = promptRegistry(reader);
-
-                StorageService storageService = new StorageService();
-                AuthService<?> authService = new BasicAuthService(storageService);
-                authService.forget(registryUri).blockingAwait();
+//                LineReader reader = LineReaderBuilder.builder()
+//                        .parser(new DefaultParser())
+//                        .build();
+//                URI registryUri = promptRegistry(reader);
+//
+//                StorageService storageService = new StorageService();
+//                AuthService<?> authService = new BasicAuthService(storageService);
+//                authService.forget(registryUri).blockingAwait();
                 handleSuccess();
             }
         });

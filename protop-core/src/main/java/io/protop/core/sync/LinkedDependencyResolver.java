@@ -2,7 +2,7 @@ package io.protop.core.sync;
 
 import io.protop.core.link.LinkedProjectsMap;
 import io.protop.core.logs.Logger;
-import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.PackageId;
 import io.protop.core.manifest.revision.RevisionSource;
 import io.reactivex.Single;
 
@@ -22,12 +22,12 @@ public class LinkedDependencyResolver implements DependencyResolver {
     }
 
     @Override
-    public Single<Map<Coordinate, RevisionSource>> resolve(Path dependencyDir,
-                                                           Map<Coordinate, RevisionSource> unresolvedDependencies) {
+    public Single<Map<PackageId, RevisionSource>> resolve(Path dependencyDir,
+                                                          Map<PackageId, RevisionSource> unresolvedDependencies) {
         return Single.fromCallable(() -> {
             LinkedProjectsMap resolvable = LinkedProjectsMap.load()
                     .blockingGet();
-            Set<Coordinate> resolved = new HashSet<>();
+            Set<PackageId> resolved = new HashSet<>();
 
             unresolvedDependencies.forEach((name, revision) -> {
                 if (resolvable.getProjects().containsKey(name)) {

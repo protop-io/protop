@@ -1,11 +1,12 @@
 package io.protop.utils;
 
-import io.protop.core.manifest.Coordinate;
+import io.protop.core.manifest.PackageId;
 import io.protop.core.manifest.revision.Version;
 
 import javax.validation.constraints.NotNull;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
 
 public class RegistryUtils {
 
@@ -13,28 +14,28 @@ public class RegistryUtils {
         // no op
     }
 
-    public static String createTarballName(Coordinate coordinate, Version version) {
+    public static String createTarballName(PackageId packageId, Version version) {
         return String.join("-",
-                coordinate.getOrganizationId(),
-                coordinate.getProjectId(),
+                packageId.getOrganization(),
+                packageId.getProject(),
                 version.toString())
                 + ".tar.gz";
     }
 
-    public static URI createTarballUri(@NotNull URI registryUri, Coordinate coordinate, Version version)
+    public static URI createTarballUri(@NotNull URI registryUri, PackageId packageId, Version version)
             throws URISyntaxException {
         return UriUtils.appendPathSegments(
                 registryUri,
-                coordinate.getOrganizationId(),
-                coordinate.getProjectId(),
+                packageId.getOrganization(),
+                packageId.getProject(),
                 "-",
-                RegistryUtils.createTarballName(coordinate, version));
+                RegistryUtils.createTarballName(packageId, version));
     }
 
-    public static URI createManifestUri(@NotNull URI registryUri, Coordinate coordinate) throws URISyntaxException {
+    public static URI createManifestUri(@NotNull URL registryUrl, PackageId packageId) throws URISyntaxException {
         return UriUtils.appendPathSegments(
-                registryUri,
-                coordinate.getOrganizationId(),
-                coordinate.getProjectId());
+                registryUrl.toURI(),
+                packageId.getOrganization(),
+                packageId.getProject());
     }
 }

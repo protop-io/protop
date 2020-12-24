@@ -2,7 +2,6 @@ package io.protop.core;
 
 import com.google.common.base.Strings;
 import io.protop.core.logs.Logger;
-import io.protop.utils.UriUtils;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -13,7 +12,6 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.InvalidParameterException;
@@ -31,19 +29,27 @@ public class RuntimeConfiguration {
     private static final String PROTOP_RC = ".protoprc";
 
     @Nullable
-    private final URI repositoryUri;
+    private final String repositoryUrl;
 
     @Nullable
-    private final URI publishRepositoryUri;
+    private final String publishRepositoryUrl;
 
     @Nullable
-    private final URI syncRepositoryUri;
+    private final String syncRepositoryUrl;
 
     @Nullable
     private final Boolean refreshGitSources;
 
+    @Nullable
+    private final String username;
+
+    @Nullable
+    private final String password;
+
     public static RuntimeConfiguration empty() {
         return new RuntimeConfiguration(
+                null,
+                null,
                 null,
                 null,
                 null,
@@ -73,10 +79,12 @@ public class RuntimeConfiguration {
 
     private static RuntimeConfiguration runtimeConfigurationFromProperties(Properties props) {
         return RuntimeConfiguration.builder()
-                .repositoryUri(UriUtils.fromString(props.getProperty("registry")))
-                .publishRepositoryUri(UriUtils.fromString(props.getProperty("publish.registry")))
-                .syncRepositoryUri(UriUtils.fromString(props.getProperty("sync.registry")))
+                .repositoryUrl(props.getProperty("registry"))
+                .publishRepositoryUrl(props.getProperty("publish.registry"))
+                .syncRepositoryUrl(props.getProperty("sync.registry"))
                 .refreshGitSources(Boolean.valueOf(props.getProperty("git.refresh")))
+                .username(props.getProperty("username"))
+                .password(props.getProperty("password"))
                 .build();
     }
 
@@ -86,10 +94,12 @@ public class RuntimeConfiguration {
         }
 
         return RuntimeConfiguration.builder()
-                .repositoryUri(resolveAsap(getRepositoryUri(), other.getRepositoryUri()))
-                .publishRepositoryUri(resolveAsap(getPublishRepositoryUri(), other.getPublishRepositoryUri()))
-                .syncRepositoryUri(resolveAsap(getSyncRepositoryUri(), other.getSyncRepositoryUri()))
+                .repositoryUrl(resolveAsap(getRepositoryUrl(), other.getRepositoryUrl()))
+                .publishRepositoryUrl(resolveAsap(getPublishRepositoryUrl(), other.getPublishRepositoryUrl()))
+                .syncRepositoryUrl(resolveAsap(getSyncRepositoryUrl(), other.getSyncRepositoryUrl()))
                 .refreshGitSources(resolveAsap(getRefreshGitSources(), other.getRefreshGitSources()))
+                .username(resolveAsap(getUsername(), other.getUsername()))
+                .password(resolveAsap(getPassword(), other.getPassword()))
                 .build();
     }
 
@@ -99,5 +109,15 @@ public class RuntimeConfiguration {
         } else {
             return Objects.nonNull(a) ? a : b;
         }
+    }
+
+    @Nullable
+    public String getPublishRepositoryUrl() {
+        return Optional.ofNullable(publishRepositoryUrl).orElse(repositoryUrl);
+    }
+
+    @Nullable
+    public String getSyncRepositoryUrl() {
+        return Optional.ofNullable(syncRepositoryUrl).orElse(repositoryUrl);
     }
 }

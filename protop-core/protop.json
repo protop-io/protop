@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "protop/proto-registry-api": "gh:protop-io/proto-registry-api"
+  }
+}
