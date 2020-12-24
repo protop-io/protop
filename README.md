@@ -65,6 +65,13 @@ This will generate a manifest file named `protop.json`.
 }
 ```
 
+If the root of the proto files are a subdirectory (eg `src/main/proto`), add the following to `protop.json`:
+```json
+  "root-dir": "src/main/proto"
+```
+
+This will allow clients not to have to adjust the protoc include path.
+
 ## Publish ("link") locally
 This will make the project accessible to all other projects that run `sync` with links enabled.
 ```bash
@@ -81,12 +88,12 @@ To unlink all projects system-wide:
 $ protop links clean
 ```
 
-### Publish to a repository*
+### Publish to a repository
 ```bash
 $ protop publish -r=https://repository.example.com
 ```
 
-*There is an implementation of a Nexus plugin for protop required for this to work. More details [here](https://github.com/protop-io/nexus-repository-protop). Coming soon, there will be better documentation on the API of the repository itself.
+> There is an implementation of a Nexus plugin for protop required for this to work. More details [here](https://github.com/protop-io/nexus-repository-protop). Coming soon, there will be better documentation on the API of the repository itself.
 
 ### Sync local/external dependencies
 Run the following with `-l` or `--use-links` to include local/linked dependencies, or run without it to only include dependencies from the network.
@@ -120,35 +127,7 @@ $ protop cache clean
 ## Use with Gradle or other build tools
 
 ### Use with Gradle
-There isn't a custom Gradle plugin for protop (yet). Even so, the implementation is quite simple. Assuming you have an existing `build.gradle` setup for a protobuf project, add the following task to the root project:
-```groovy
-task protop(type: Exec) {
-    workingDir "."
-    commandLine "protop", "sync"
-}
-```
-This task will simply run `protop sync`. To invoke it upon `gradle build` and ensure that it is run before the protos are generated, alter the `protobuf` block (or add it now):
-```groovy
-protobuf {
-    // ...
-    generateProtoTasks {
-        // ...
-        all().each { task -> task.dependsOn protop }
-    }
-}
-```
-
-Finally, make sure the compiler will find all the synced protos:
-```groovy
-sourceSets {
-    main {
-        // ...
-        proto {
-            srcDir ".protop/path"
-        }
-    }
-}
-```
+Use the [Gradle plugin](https://github.com/google/protobuf-gradle-plugin). 
 
 ### Use with protoc directly
 With dependencies already synced, you can call `protoc` in a project that looks like the one above:
