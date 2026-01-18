@@ -46,8 +46,12 @@ public class RuntimeConfiguration {
     @Nullable
     private final String password;
 
+    @Nullable
+    private final Boolean noAuth;
+
     public static RuntimeConfiguration empty() {
         return new RuntimeConfiguration(
+                null,
                 null,
                 null,
                 null,
@@ -85,6 +89,7 @@ public class RuntimeConfiguration {
                 .refreshGitSources(Boolean.valueOf(props.getProperty("git.refresh")))
                 .username(props.getProperty("username"))
                 .password(props.getProperty("password"))
+                .noAuth(Boolean.valueOf(props.getProperty("no.auth")))
                 .build();
     }
 
@@ -100,6 +105,7 @@ public class RuntimeConfiguration {
                 .refreshGitSources(resolveAsap(getRefreshGitSources(), other.getRefreshGitSources()))
                 .username(resolveAsap(getUsername(), other.getUsername()))
                 .password(resolveAsap(getPassword(), other.getPassword()))
+                .noAuth(resolveAsap(getNoAuth(), other.getNoAuth()))
                 .build();
     }
 

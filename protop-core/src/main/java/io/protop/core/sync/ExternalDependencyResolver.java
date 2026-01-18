@@ -264,11 +264,16 @@ public class ExternalDependencyResolver implements DependencyResolver {
 
     private RetrievalServiceGrpc.RetrievalServiceStub createRetrievalServiceStub() throws MalformedURLException {
         URL retrievalURL = getRegistryUrl();
-        AuthTokenCallCredentials credentials = authService.getAuthTokenCallCredentials(retrievalURL);
         Channel channel = grpcService.getChannel(retrievalURL);
-        // TODO skip call credentials if --no-auth flag passed
-        return RetrievalServiceGrpc.newStub(channel)
-                .withCallCredentials(credentials);
+        
+        Boolean noAuth = Optional.ofNullable(context.getRc().getNoAuth()).orElse(false);
+        if (noAuth) {
+            return RetrievalServiceGrpc.newStub(channel);
+        } else {
+            AuthTokenCallCredentials credentials = authService.getAuthTokenCallCredentials(retrievalURL);
+            return RetrievalServiceGrpc.newStub(channel)
+                    .withCallCredentials(credentials);
+        }
     }
 
     private Maybe<Manifest> retrieveManifest(PackageId packageId, Version version) {
@@ -321,15 +326,17 @@ public class ExternalDependencyResolver implements DependencyResolver {
                     try {
                         chunks.get().write(value.getData().toByteArray());
                     } catch (IOException e) {
-                        // TODO wrap this exception?
-                        emitter.onError(e);
+                        String message = String.format("Failed to write data chunk for package %s %s.", packageId, version);
+                        logger.error(message, e);
+                        emitter.onError(new RuntimeException(message, e));
                     }
                 }
 
                 @Override
                 public void onError(Throwable t) {
-                    // TODO wrap this exception?
-                    emitter.onError(t);
+                    String message = String.format("Failed to retrieve package %s %s from registry.", packageId, version);
+                    logger.error(message, t);
+                    emitter.onError(new RuntimeException(message, t));
                 }
 
                 @Override
@@ -361,28 +368,50 @@ public class ExternalDependencyResolver implements DependencyResolver {
                     .orElse(false);
 
             if (!gitUrlDirectory.exists() || refreshGitSources) {
-                if (gitUrlDirectory.exists()) {
-                    // TODO it might be nice to pull in changes if the directory exists,
-                    //  rather than always wipe it out and then clone
-                    final List<Path> pathsToDelete = Files.walk(gitUrlPath)
-                            .sorted(Comparator.reverseOrder())
-                            .collect(Collectors.toList());
-                    for (Path path : pathsToDelete) {
-                        Files.deleteIfExists(path);
+                if (gitUrlDirectory.exists() && refreshGitSources) {
+                    // Use git pull to update existing repository instead of delete+clone
+                    try {
+                        logger.info("Updating existing git repository {} {}.", packageId, gitSource);
+                        Git git = Git.open(gitUrlDirectory);
+                        git.pull()
+                                .setRemote("origin")
+                                .setRebase(false)
+                                .call();
+                    } catch (GitAPIException | IOException e) {
+                        logger.warn("Failed to pull changes for {} from {}, will delete and re-clone.", packageId, gitSource, e);
+                        // Fall back to delete and clone if pull fails
+                        final List<Path> pathsToDelete = Files.walk(gitUrlPath)
+                                .sorted(Comparator.reverseOrder())
+                                .collect(Collectors.toList());
+                        for (Path path : pathsToDelete) {
+                            Files.deleteIfExists(path);
+                        }
+                        try {
+                            logger.info("Retrieving {} {}.", packageId, gitSource);
+                            Git.cloneRepository()
+                                    .setURI(gitSource.getRawUrl())
+                                    .setDirectory(gitUrlDirectory)
+                                    .setCloneAllBranches(true)
+                                    .call();
+                        } catch (GitAPIException cloneException) {
+                            String message = String.format("Failed to retrieve %s from %s after pull failure.", packageId, gitSource);
+                            logger.error(message, cloneException);
+                            throw new RuntimeException(message, cloneException);
+                        }
                     }
-                }
-
-                try {
-                    logger.info("Retrieving {} {}.", packageId, gitSource);
-                    Git.cloneRepository()
-                            .setURI(gitSource.getRawUrl())
-                            .setDirectory(gitUrlDirectory)
-                            .setCloneAllBranches(true)
-                            .call();
-                } catch (GitAPIException e) {
-                    // TODO rethrow?
-                    String message = String.format("Failed to retrieve %s from %s.", packageId, gitSource);
-                    logger.error(message, e);
+                } else if (!gitUrlDirectory.exists()) {
+                    try {
+                        logger.info("Retrieving {} {}.", packageId, gitSource);
+                        Git.cloneRepository()
+                                .setURI(gitSource.getRawUrl())
+                                .setDirectory(gitUrlDirectory)
+                                .setCloneAllBranches(true)
+                                .call();
+                    } catch (GitAPIException e) {
+                        String message = String.format("Failed to retrieve %s from %s.", packageId, gitSource);
+                        logger.error(message, e);
+                        throw new RuntimeException(message, e);
+                    }
                 }
             }
 
@@ -396,10 +425,11 @@ public class ExternalDependencyResolver implements DependencyResolver {
                             .setName(branchName.get())
                             .call();
                 }
-            } catch (GitAPIException e) {
+            } catch (GitAPIException | IOException e) {
                 String message = String.format("Failed to find branch \"%s\" in Git repo for %s: %s.",
-                        branchName.get(), packageId, gitSource);
+                        branchName.orElse("unknown"), packageId, gitSource);
                 logger.error(message, e);
+                throw new RuntimeException(message, e);
             }
 
             cacheService.lock(Storage.GlobalDirectory.GIT_CACHE);

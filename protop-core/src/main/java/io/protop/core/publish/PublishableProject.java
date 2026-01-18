@@ -22,7 +22,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -90,11 +93,26 @@ public class PublishableProject {
             gZipOutputStream.close();
             outputStream.close();
 
+            // Calculate SHA-256 checksum
+            MessageDigest digest;
+            try {
+                digest = MessageDigest.getInstance("SHA-256");
+            } catch (NoSuchAlgorithmException e) {
+                String message = "SHA-256 algorithm not available";
+                logger.error(message, e);
+                throw new RuntimeException(message, e);
+            }
+            
+            byte[] fileBytes = Files.readAllBytes(destination);
+            byte[] hashBytes = digest.digest(fileBytes);
+            String shasum = bytesToHex(hashBytes);
+            String integrity = "sha256-" + shasum;
+
             return CompressedArchiveDetails.builder()
                     .location(destination)
                     .filecount(files.size())
-                    .integrity("TODO")
-                    .shasum("TODO")
+                    .integrity(integrity)
+                    .shasum(shasum)
                     .unpackedSize(unpackedSize)
                     .build();
         } catch (IOException e) {
@@ -128,6 +146,14 @@ public class PublishableProject {
     @SuppressWarnings("UnstableApiUsage")
     private static String getExtension(File file) {
         return Files.getFileExtension(file.getName());
+    }
+
+    private static String bytesToHex(byte[] bytes) {
+        StringBuilder result = new StringBuilder();
+        for (byte b : bytes) {
+            result.append(String.format("%02x", b));
+        }
+        return result.toString();
     }
 
     @Getter

@@ -48,6 +48,13 @@ public class Sync implements Runnable {
             defaultValue = "")
     private Boolean refreshGitSources;
 
+    @Option(names = {"--no-auth"},
+            description = "Skip authentication when accessing registry.",
+            required = false,
+            arity = "0..1",
+            defaultValue = "false")
+    private Boolean noAuth;
+
     @Override
     public void run() {
         Logs.enableIf(protop.isDebugMode());
@@ -57,6 +64,7 @@ public class Sync implements Runnable {
             RuntimeConfiguration cliRc = RuntimeConfiguration.builder()
                     .repositoryUrl(Optional.ofNullable(registry).orElse(null))
                     .refreshGitSources(refreshGitSources)
+                    .noAuth(noAuth)
                     .build();
             Context context = Context.from(location, cliRc);
 

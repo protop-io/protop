@@ -103,8 +103,11 @@ public class CacheService {
 
     private void unlock(Path dependencyDir) {
         logger.info("Unlocking dependencies.");
-        // TODO handle "false" response
-        walkAndApply(dependencyDir, file -> file.setWritable(true));
+        walkAndApply(dependencyDir, file -> {
+            if (!file.setWritable(true)) {
+                logger.warn("Failed to set write permission on file: {}", file.getPath());
+            }
+        });
     }
 
     public void lock(Storage.GlobalDirectory globalDirectory) {
@@ -115,8 +118,11 @@ public class CacheService {
      * Makes the directory and everything in it un-writable, mainly to protect against accidental modifications.
      */
     private void lock(Path dependencyDir) {
-        // TODO handle "false" response
-        walkAndApply(dependencyDir, File::setReadOnly);
+        walkAndApply(dependencyDir, file -> {
+            if (!file.setReadOnly()) {
+                logger.warn("Failed to set read-only permission on file: {}", file.getPath());
+            }
+        });
     }
 
     private void walkAndApply(Path directory, Consumer<File> consumer) {
