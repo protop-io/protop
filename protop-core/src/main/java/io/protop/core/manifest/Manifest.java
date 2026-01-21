@@ -23,7 +23,7 @@ import java.util.Optional;
 @SuperBuilder
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @JsonIgnoreProperties(ignoreUnknown = true)
-@JsonPropertyOrder({"name", "org", "version", "description", "keywords", "license", "homepage"})
+@JsonPropertyOrder({"name", "org", "version", "description", "root-dir", "keywords", "license", "homepage"})
 public class Manifest {
 
     private static final Logger logger = Logger.getLogger(Manifest.class);
@@ -41,6 +41,9 @@ public class Manifest {
 //    @JsonProperty("include")
 //    @JsonSerialize(converter = PathListToStringList.class)
 //    private List<Path> include;
+
+    @JsonProperty("root-dir")
+    private Path rootDir;
 
     @JsonInclude(JsonInclude.Include.NON_NULL)
     @JsonProperty("dependencies")
@@ -67,6 +70,7 @@ public class Manifest {
             @JsonProperty("version") @NotNull Version version,
             @JsonProperty("organization") @NotNull String organization,
 //            @JsonProperty("include") List<Path> include,
+            @JsonProperty("root-dir") @NotNull Path rootDir,
             @JsonProperty("dependencies") @JsonDeserialize(converter = DependencyMapDeserializer.class)
                     DependencyMap dependencies,
             @JsonProperty("description") String description,
@@ -78,6 +82,7 @@ public class Manifest {
         this.version = version;
         this.organization = organization;
 //        this.include = Objects.isNull(include) ? ImmutableList.of() : ImmutableList.copyOf(include);
+        this.rootDir = rootDir;
         this.dependencies = dependencies;
         this.description = description;
         this.readme = readme;
@@ -105,5 +110,9 @@ public class Manifest {
             logger.error(message, e);
             throw new RuntimeException(message, e);
         }
+    }
+
+    public static Optional<Manifest> from(final File directory) {
+        return from(directory.toPath());
     }
 }
